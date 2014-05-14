@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'commander/import'
+require 'cloud_door'
+
+program :version, '0.0.1'
+program :description, 'access onedrive from CLI'
+
+command :auth do |c|
+  c.syntax      = 'onedrive auth'
+  c.summary     = 'authentication for onedrive'
+  c.description = 'authentication for onedrive'
+  c.example 'description', 'onedrive auth'
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    auth_url = drive.get_auth_url
+    say "Access to the url below from browser and paste redirect url"
+    say auth_url
+    redirect = ask("redirect url: ")
+    drive.reset_token(redirect)
+    drive.set_token
+    user_name = drive.get_onedrive_info('user', 'name')
+    say "login as #{user_name}"
+  end
+end
+
+command :list do |c|
+  c.syntax      = 'onedrive list [file_id]'
+  c.summary     = 'list onedrive files'
+  c.description = 'list onedrive files'
+  c.example 'description', "onedrive list 'file.9999999999999999.999999999999999!9999'"
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    drive.set_token
+    list = drive.show_dir(args[0])
+    if (list.count > 0)
+      list.each { |item| p item }
+    else
+      say 'file not found'
+    end
+  end
+end
+
+command :download do |c|
+  c.syntax      = 'onedrive download [file_id]'
+  c.summary     = 'download file from onedrive'
+  c.description = 'download file from onedrive'
+  c.example 'description', "onedrive download 'file.9999999999999999.999999999999999!9999'"
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    if (args[0].nil? || args[0].empty?)
+      say 'wrong parameter'
+    else
+      drive.set_token
+      result = drive.download_file(args[0])
+      if (result)
+        say 'download success'
+      else
+        say 'download fail'
+      end
+    end
+  end
+end
