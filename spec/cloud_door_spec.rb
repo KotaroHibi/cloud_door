@@ -13,8 +13,11 @@ end
 
 def create_onedrive(file_id=nil)
   storage = CloudDoor::OneDrive.new
-  storage.file_id = file_id
-  storage.token.token_file = '.test'
+  storage.file_id              = file_id
+  storage.token.token_file     = '.test'
+  storage.config.client_id     = '1234'
+  storage.config.client_secret = 'abcd'
+  storage.config.redirect_url  = 'onedrive'
   storage
 end
 
@@ -183,9 +186,9 @@ describe 'OneDrive' do
             :body => {
               'client_id'     => storage.config.client_id,
               'client_secret' => storage.config.client_secret,
+              'redirect_uri'  => storage.config.redirect_url,
               'code'          => code,
-              'grant_type'    => 'authorization_code',
-              'redirect_uri'  => storage.config.redirect_url
+              'grant_type'    => 'authorization_code'
             },
             :headers => {
               'Content-Type' => 'application/x-www-form-urlencoded',
