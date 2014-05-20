@@ -1,6 +1,0 @@
----
-onedrive:
-  client_id: 000000004011CC48
-  client_secret: ueGDCPD2ZkHI616vHMz8712qJsYrPHQd
-  redirect_url: https://login.live.com/oauth20_desktop.srf
-  token_file: ./.token

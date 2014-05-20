@@ -2,26 +2,100 @@
 
 require 'rubygems'
 require 'commander/import'
+require 'watir-webdriver'
 require 'cloud_door'
 
 program :version, '0.0.1'
 program :description, 'access onedrive from CLI'
+
+command :config do |c|
+  c.syntax      = 'onedrive config'
+  c.summary     = 'configure the onedrive connection'
+  c.description = 'configure the onedrive connection'
+  c.example 'description', 'onedrive config'
+  c.option '-l'
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    if options.l
+      say "client_id:     #{drive.config.client_id}\n"
+      say "client_secret: #{drive.config.client_secret}\n"
+      say "redirect_url:  #{drive.config.redirect_url}\n"
+      exit
+    end
+    say ("Please enter the onedrive config.")
+    settings = {}
+    settings['client_id']      = ask('client_id     : ')
+    settings['client_secret']  = ask('client_secret : ')
+    settings['redirect_url']   = ask('redirect_url  : ')
+    settings.each { |key, val| settings[key] = val.to_s }
+    drive.config.update_yaml(settings)
+    say ('config end')
+  end
+end
+
+command :account do |c|
+  c.syntax      = 'onedrive account'
+  c.summary     = 'set account for the onedrive connection'
+  c.description = 'set account for the onedrive connection'
+  c.example 'description', 'onedrive accout'
+  # c.option '-b STR', String, 'Example of string'
+  c.option '-l'
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    if options.l
+      say "account : #{drive.account.login_account}\n"
+      say "password: #{drive.account.login_password}\n"
+      exit
+    end
+    say ("Please enter the onedrive account.")
+    settings = {}
+    settings['login_account']  = ask('login_account : ')
+    settings['login_password'] = ask('login_password: ') { |q| q.echo = '*' }
+    settings.each { |key, val| settings[key] = val.to_s }
+    drive = CloudDoor::OneDrive.new
+    drive.account.update_yaml(settings)
+    say ('account end')
+  end
+end
 
 command :auth do |c|
   c.syntax      = 'onedrive auth'
   c.summary     = 'authentication for onedrive'
   c.description = 'authentication for onedrive'
   c.example 'description', 'onedrive auth'
+  c.option '-d'
   c.action do |args, options|
     drive = CloudDoor::OneDrive.new
-    auth_url = drive.get_auth_url
-    say "Access to the url below from browser and paste redirect url"
-    say auth_url
-    redirect = ask("redirect url: ")
-    drive.reset_token(redirect)
-    drive.set_token
-    user_name = drive.get_onedrive_info('user', 'name')
-    say "login as #{user_name}"
+    unless drive.config.is_init?
+      say "Config is not found. Please execute './onedrive config' before."
+      exit
+    end
+    allow = ask('Do you want to allow access to the onedrive from this system(Y/N)?')
+    exit unless ['Y', 'YES'].include?(allow.upcase)
+    if options.d
+      if (!drive.account.login_account.empty? && !drive.account.login_password.empty?)
+        say "found defaulut account '#{drive.account.login_account}'. use this account."
+      else
+        say "Default account is not found. Please execute './onedrive account' before."
+        exit
+      end
+    else
+      say "Please input onedrive account"
+      say "(hint) You can sign in automatically, if you register onedrive account on this system."
+      drive.account.login_account  = ask('account : ')
+      drive.account.login_password = ask('password: ') { |q| q.echo = '*' }
+    end
+    say 'start a connection to the onedrive. please wait a few seconds.'
+    redirect = drive.login_browser
+    if !redirect.nil?
+      drive.reset_token(redirect)
+      drive.set_token
+      user_name = drive.get_onedrive_info('user', 'name')
+      say 'login success'
+      say "login as #{user_name}"
+    else
+      say 'login fail'
+    end
   end
 end
 
@@ -33,7 +107,8 @@ command :list do |c|
   c.action do |args, options|
     drive = CloudDoor::OneDrive.new
     drive.set_token
-    list = drive.show_dir(args[0])
+    drive.file_id = args[0]
+    list = drive.show_dir
     if (list.count > 0)
       list.each { |item| p item }
     else
@@ -53,7 +128,8 @@ command :download do |c|
       say 'wrong parameter'
     else
       drive.set_token
-      result = drive.download_file(args[0])
+      drive.file_id = args[0]
+      result = drive.download_file
       if (result)
         say 'download success'
       else
