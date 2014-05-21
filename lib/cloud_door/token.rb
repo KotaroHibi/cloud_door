@@ -32,8 +32,9 @@ class Token
     end
   end
 
-  def self.load_token(token_file=TOKEN_FILE)
+  def self.load_token(token_file='')
     begin
+      token_file = TOKEN_FILE if (token_file.nil? || token_file.empty?)
       return nil unless File.exists?(token_file)
       marshal = File.open(token_file).read
       token = Marshal.load(marshal)

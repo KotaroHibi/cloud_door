@@ -41,7 +41,7 @@ module CloudDoor
       'accept_button_id'   => 'idBtn_Accept'
     }
     # log_file
-    LOG_FILE = './bin/request.log'
+    LOG_FILE = './log/request.log'
 
     def initialize
       @config  = CloudConfig.new('onedrive')

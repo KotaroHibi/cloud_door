@@ -89,7 +89,6 @@ command :auth do |c|
     redirect = drive.login_browser
     if !redirect.nil?
       drive.reset_token(redirect)
-      drive.set_token
       user_name = drive.get_onedrive_info('user', 'name')
       say 'login success'
       say "login as #{user_name}"
