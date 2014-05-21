@@ -54,8 +54,8 @@ module CloudDoor
       AUTH_FORMAT % [@config.client_id, UPDATE_SCOPE, @config.redirect_url]
     end
 
-    def set_token
-      @token = Token.load_token
+    def set_token(token_file='')
+      @token = Token.load_token(token_file)
     end
 
     def reset_token(url)

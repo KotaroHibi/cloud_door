@@ -37,9 +37,11 @@ describe 'OneDrive' do
     let(:token_file) { storage.token.token_file }
     before (:each) do
       open(token_file, 'wb') { |file| file << Marshal.dump(token) }
-      storage.set_token
     end
-    it { expect(storage.token).to be_true }
+    it {
+      token = storage.set_token(storage.token.token_file)
+      expect(token.is_a?(Token)).to be_true
+    }
     after (:each) do
       File.delete(token_file) if File.exists?(token_file)
     end
