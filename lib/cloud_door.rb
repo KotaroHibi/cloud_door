@@ -1,7 +1,7 @@
 require 'yaml'
 require 'logger'
 require 'open-uri'
-require 'RestClient'
+require 'rest_client'
 require 'watir-webdriver'
 require 'cloud_door/version'
 require 'cloud_door/account'
@@ -69,7 +69,7 @@ module CloudDoor
     def refresh_token
       info = request_refresh_token
       return false if info.nil?
-      @token = Token.new
+      return false unless @token.is_a?(Token)
       @token.set_attributes(info)
       @token.write_token
     end
@@ -95,16 +95,20 @@ module CloudDoor
     end
 
     def download_file
-      key  = 'location'
-      info = request_download()
-      return false if (info.nil? || !info.is_a?(Hash) || !info.has_key?(key))
-      file_url  = info[key]
-      file_name = get_onedrive_info('file', 'name')
-      return false if file_name.nil?
-      open("#{file_name}", 'wb') do |file|
-        file << open(file_url).read
+      begin
+        key  = 'location'
+        info = request_download()
+        return false if (info.nil? || !info.is_a?(Hash) || !info.has_key?(key))
+        file_url  = info[key]
+        file_name = get_onedrive_info('file', 'name')
+        return false if file_name.nil?
+        open("#{file_name}", 'wb') do |file|
+          file << open(file_url).read
+        end
+        File.exist?(file_name)
+      rescue
+        false
       end
-      File.exist?(file_name)
     end
 
     def login_browser
@@ -117,6 +121,7 @@ module CloudDoor
         browser.button(:id, LOGIN_COMPONENTS['signin_button_id']).click
         browser.wait
         browser.button(:id, LOGIN_COMPONENTS['accept_button_id']).click
+        browser.wait
         url = browser.url
         browser.close
         url
@@ -155,7 +160,7 @@ module CloudDoor
     def request_get_token(url)
       begin
         params = CGI.parse(URI.parse(url).query)
-        raise 'code nothing' if !params.has_key?('code')
+        return nil if !params.has_key?('code')
         code = params['code'][0]
         post_body = {
           :client_id     => @config.client_id,
@@ -172,19 +177,15 @@ module CloudDoor
     end
 
     def request_refresh_token
-      begin
-        post_body = {
-          :client_id     => @config.client_id,
-          :client_secret => @config.client_secret,
-          :redirect_uri  => @config.redirect_url,
-          :grant_type    => 'refresh_token',
-          :refresh_token => @token.refresh_token
-        }
-        header = {:content_type => 'application/x-www-form-urlencoded'}
-        send_request(:post, TOKEN_URL, post_body, header)
-      rescue
-        nil
-      end
+      post_body = {
+        :client_id     => @config.client_id,
+        :client_secret => @config.client_secret,
+        :redirect_uri  => @config.redirect_url,
+        :grant_type    => 'refresh_token',
+        :refresh_token => @token.refresh_token
+      }
+      header = {:content_type => 'application/x-www-form-urlencoded'}
+      send_request(:post, TOKEN_URL, post_body, header)
     end
 
     def request_user
