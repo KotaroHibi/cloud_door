@@ -31,6 +31,8 @@ module CloudDoor
     FILE_FORMAT = ACTION_BASE + "%s?access_token=%s"
     # URL for download file
     DOWNLOAD_FORMAT = ACTION_BASE + "%s/content?suppress_redirects=true&access_token=%s"
+    # URL for upload file
+    UPLOAD_FORMAT = ACTION_BASE + "%s/files?access_token=%s"
     # update scope
     UPDATE_SCOPE = 'wl.skydrive_update,wl.offline_access'
     # onedrive login site components
@@ -86,11 +88,13 @@ module CloudDoor
 
     def show_dir
       dir = get_onedrive_info('dir', 'data')
-      return [] if (dir.nil? || !dir.is_a?(Array) || dir.count == 0)
-      items = []
+      return {} if (dir.nil? || !dir.is_a?(Array) || dir.count == 0)
+      items = {}
       dir.each do |item|
-        items << "#{item['name']} [#{item['id']}]"
+        items[item['name']] = item['id']
       end
+      marshal = Marshal.dump(items)
+      open('listdata', 'wb') { |file| file << marshal }
       items
     end
 
@@ -106,6 +110,17 @@ module CloudDoor
           file << open(file_url).read
         end
         File.exist?(file_name)
+      rescue
+        false
+      end
+    end
+
+    def upload_file(file)
+      return false unless File.exists?(file)
+      begin
+        info = request_upload(file)
+        # if not raise error, judge that's success
+        true
       rescue
         false
       end
@@ -131,30 +146,36 @@ module CloudDoor
     end
 
     private
-    def send_request(method, url, body='', header='')
-      logger = Logger.new(LOG_FILE)
+    def send_request(method, url, body='', header={})
       begin
-        if method == :post
-          res = RestClient.post(url, body, header) do |response, request, result|
-            log = "request:\n#{request.inspect}\n"
-            log << "result:\n#{result.inspect}\n"
-            log << "response:\n#{JSON.parse(response.body).inspect}\n"
-            logger.info(log)
+        if method == :get
+          res = RestClient.get(url) do |response, request, result|
+            request_log(response, request, result)
             response
           end
-        else
-          res = RestClient.get(url) do |response, request, result|
-            log = "request:\n#{request.inspect}\n"
-            log << "result:\n#{result.inspect}\n"
-            log << "response:\n#{JSON.parse(response.body).inspect}\n"
-            logger.info(log)
+        elsif method == :post
+          res = RestClient.post(url, body, header) do |response, request, result|
+            request_log(response, request, result)
+            response
+          end
+        elsif method == :post_file
+          res = RestClient.post(url, :file => body) do |response, request, result|
+            request_log(response, request, result)
             response
           end
         end
         JSON.parse(res.body)
-      rescue
+      rescue => e
         nil
       end
+    end
+
+    def request_log(response, request, result)
+      logger = Logger.new(LOG_FILE)
+      log = "request:\n#{request.args.inspect}\n"
+      log << "result:\n#{result.inspect}\n"
+      log << "response:\n#{JSON.parse(response.body).inspect}\n"
+      logger.info(log)
     end
 
     def request_get_token(url)
@@ -210,6 +231,11 @@ module CloudDoor
     def request_download
       url = DOWNLOAD_FORMAT % [@file_id, @token.access_token]
       send_request(:get, url)
+    end
+
+    def request_upload(file)
+      url = UPLOAD_FORMAT % [@file_id, @token.access_token]
+      send_request(:post_file, url, File.new(file, 'rb'))
     end
   end
 end

@@ -164,7 +164,7 @@ describe 'OneDrive' do
         WebMock.stub_request(:get, url).
           to_return(:status => 200, :body => body, :headers => {})
       end
-      it { expect(storage.show_dir).to eq ['onedrive [1234]', 'skydrive [5678]'] }
+      it { expect(storage.show_dir).to eq({'onedrive' => '1234', 'skydrive' => '5678'}) }
     end
     context 'data not exists' do
       before (:each) do
@@ -172,7 +172,7 @@ describe 'OneDrive' do
         WebMock.stub_request(:get, url).
           to_return(:status => 200, :body => body, :headers => {})
       end
-      it { expect(storage.show_dir).to eq [] }
+      it { expect(storage.show_dir).to eq({}) }
     end
   end
 

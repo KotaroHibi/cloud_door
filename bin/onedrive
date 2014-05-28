@@ -109,7 +109,7 @@ command :list do |c|
     drive.file_id = args[0]
     list = drive.show_dir
     if (list.count > 0)
-      list.each { |item| p item }
+      list.each { |file_id, name| p "#{name} [#{file_id}]" }
     else
       say 'file not found'
     end
@@ -133,6 +133,29 @@ command :download do |c|
         say 'download success'
       else
         say 'download fail'
+      end
+    end
+  end
+end
+
+command :upload do |c|
+  c.syntax      = 'onedrive upload [file], [file_id]'
+  c.summary     = 'upload file to onedrive'
+  c.description = 'upload file to onedrive'
+  c.example 'description', "onedrive upload 'filename' 'folder.9999999999999999.999999999999999!9999'"
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    if (args[0].nil? || args[0].empty? || args[1].nil? || args[1].empty?)
+      say 'wrong parameter'
+    else
+      drive.set_token
+      file = args[0]
+      drive.file_id = args[1]
+      result = drive.upload_file(file)
+      unless (result.nil?)
+        say 'upload success'
+      else
+        say 'upload fail'
       end
     end
   end
