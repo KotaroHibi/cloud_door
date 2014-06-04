@@ -1,16 +1,18 @@
 require 'yaml'
 require 'logger'
 require 'open-uri'
+require 'zip'
 require 'rest_client'
 require 'watir-webdriver'
 require 'cloud_door/version'
 require 'cloud_door/account'
 require 'cloud_door/cloud_config'
 require 'cloud_door/token'
+require 'cloud_door/file_list'
 
 module CloudDoor
   class OneDrive
-    attr_accessor :token, :file_id
+    attr_accessor :token, :file_id, :file_name, :up_file_name, :file_list
     attr_reader :config, :account
 
     # domain for auth
@@ -33,6 +35,9 @@ module CloudDoor
     DOWNLOAD_FORMAT = ACTION_BASE + "%s/content?suppress_redirects=true&access_token=%s"
     # URL for upload file
     UPLOAD_FORMAT = ACTION_BASE + "%s/files?access_token=%s"
+    # URL for delete file
+    DELETE_FORMAT = ACTION_BASE + "%s?access_token=%s"
+
     # update scope
     UPDATE_SCOPE = 'wl.skydrive_update,wl.offline_access'
     # onedrive login site components
@@ -44,12 +49,17 @@ module CloudDoor
     }
     # log_file
     LOG_FILE = './log/request.log'
+    # regular expression pattern of parent directory
+    PARENT_DIR_PAT = /..\//
+    # regular expression pattern of file's file_id
+    FILE_ID_PAT = /^file\./
 
     def initialize
-      @config  = CloudConfig.new('onedrive')
-      @account = Account.new('onedrive')
-      @token   = Token.new
-      @file_id = nil
+      @config    = CloudConfig.new('onedrive')
+      @account   = Account.new('onedrive')
+      @token     = Token.new
+      @file_list = FileList.new
+      @file_id   = nil
     end
 
     def get_auth_url
@@ -86,44 +96,91 @@ module CloudDoor
       info[key]
     end
 
-    def show_dir
-      dir = get_onedrive_info('dir', 'data')
-      return {} if (dir.nil? || !dir.is_a?(Array) || dir.count == 0)
-      items = {}
-      dir.each do |item|
-        items[item['name']] = item['id']
-      end
-      marshal = Marshal.dump(items)
-      open('listdata', 'wb') { |file| file << marshal }
+    def show_files
+      return {} unless set_file_id
+      return {} if @file_id =~ FILE_ID_PAT
+      items = get_files
+      write_file_list(items)
       items
     end
 
-    def download_file
-      begin
-        key  = 'location'
-        info = request_download()
-        return false if (info.nil? || !info.is_a?(Hash) || !info.has_key?(key))
-        file_url  = info[key]
-        file_name = get_onedrive_info('file', 'name')
-        return false if file_name.nil?
-        open("#{file_name}", 'wb') do |file|
-          file << open(file_url).read
-        end
-        File.exist?(file_name)
-      rescue
-        false
-      end
+    def show_current_dir
+      return false if @file_list.load_list == false
+      list = @file_list.list
+      return '/top' if (list.size < 2)
+      files = []
+      list.each { |part| files << part['name'] unless part['name'].nil? }
+      '/' + files.join('/')
     end
 
-    def upload_file(file)
-      return false unless File.exists?(file)
+    def delete_file
       begin
-        info = request_upload(file)
+        return false if (@file_name.nil? || @file_name.empty?)
+        return false unless set_file_id
+        return false unless @file_id =~ FILE_ID_PAT
         # if not raise error, judge that's success
+        request_delete
         true
       rescue
         false
       end
+    end
+
+    def download_file
+      begin
+        return false if (@file_name.nil? || @file_name.empty?)
+        return false unless set_file_id
+        return false unless @file_id =~ FILE_ID_PAT
+        key  = 'location'
+        info = request_download
+        return false if (info.nil? || !info.is_a?(Hash) || !info.has_key?(key))
+        file_url = info[key]
+        open("#{@file_name}", 'wb') do |file|
+          file << open(file_url).read
+        end
+        File.exists?(@file_name)
+      rescue
+        false
+      end
+    end
+
+    def upload_file
+      return false unless File.exists?(@up_file_name)
+      @file_id = convert_name_to_id('current')
+      up_file = get_upload_file_name
+      begin
+        # if not raise error, judge that's success
+        info = request_upload(up_file)
+        true
+      rescue
+        false
+      ensure
+        File.delete(up_file) if File.directory?(@up_file_name)
+      end
+    end
+
+    def get_upload_file_name
+      if File.directory?(@up_file_name)
+        up_file = "#{@up_file_name}.zip"
+      else
+        up_file = @up_file_name
+      end
+    end
+
+    def delete_file_list
+      @file_list.delete_file
+    end
+
+    def file_exists?
+      if @file_name
+        file_name = @file_name
+      else
+        file_name = get_upload_file_name
+      end
+      @file_id = convert_name_to_id('current')
+      items = get_files
+      return false if (items.empty? || !items.is_a?(Hash))
+      items.has_key?(file_name)
     end
 
     def login_browser
@@ -145,7 +202,88 @@ module CloudDoor
       end
     end
 
+    def self.get_type_from_id(file_id)
+      type = file_id.split('.')[0]
+    end
+
     private
+    def get_files
+      dir = get_onedrive_info('dir', 'data')
+      return {} if (dir.nil? || !dir.is_a?(Array) || dir.count == 0)
+      items = {}
+      dir.each do |item|
+        items[item['name']] = item['id']
+      end
+      items
+    end
+
+    def set_file_id
+      if (@file_name.nil? || @file_name.empty?)
+        mode = 'current'
+      elsif (@file_name =~ PARENT_DIR_PAT)
+        mode = 'parent'
+      else
+        mode = 'target'
+      end
+      file_id = convert_name_to_id(mode)
+      return false if (file_id == false)
+      @file_id = file_id
+      true
+    end
+
+    def convert_name_to_id(mode)
+      return false if @file_list.load_list == false
+      list = @file_list.list
+      if (mode == 'current')
+        if (list.count < 2)
+          file_id = nil
+        else
+          file_id = list.last['id']
+        end
+      elsif (mode == 'parent')
+        back = (@file_name.scan(PARENT_DIR_PAT).size) + 1
+        return false if (list.size < back)
+        last = list.size - back
+        if last == 0
+          file_id = nil
+        else
+          file_id = list[list.size - back]['id']
+        end
+      elsif (mode == 'target')
+        return false if (list.empty?)
+        items = list.last['items']
+        return false if (items.empty? || !items.has_key?(@file_name))
+        file_id = items[@file_name]
+      end
+      file_id
+    end
+
+    def compress_file
+      filename = @up_file_name
+      zip_file_name = "#{filename}.zip"
+      directory = filename
+      Zip::File.open(zip_file_name, Zip::File::CREATE) do |zipfile|
+          Dir[File.join(directory, '**', '**')].each do |file|
+          zipfile.add(file, file)
+        end
+      end
+      filename = zip_file_name
+    end
+
+    def write_file_list(items)
+      return false if @file_list.load_list == false
+      list = @file_list.list
+      if (list.empty?)
+        @file_list.add_list_top(items)
+      elsif (@file_name =~ PARENT_DIR_PAT)
+        back = @file_name.scan(PARENT_DIR_PAT).size + 1
+        @file_list.remove_list(back)
+      else
+        return true if (@file_name.nil? || @file_name.empty?)
+        @file_list.add_list(@file_id, @file_name, items)
+      end
+    end
+
     def send_request(method, url, body='', header={})
       begin
         if method == :get
@@ -155,6 +293,11 @@ module CloudDoor
           end
         elsif method == :post
           res = RestClient.post(url, body, header) do |response, request, result|
+            request_log(response, request, result)
+            response
+          end
+        elsif method == :delete
+          res = RestClient.delete(url) do |response, request, result|
             request_log(response, request, result)
             response
           end
@@ -236,6 +379,11 @@ module CloudDoor
     def request_upload(file)
       url = UPLOAD_FORMAT % [@file_id, @token.access_token]
       send_request(:post_file, url, File.new(file, 'rb'))
+    end
+
+    def request_delete
+      url = DELETE_FORMAT % [@file_id, @token.access_token]
+      send_request(:delete, url)
     end
   end
 end

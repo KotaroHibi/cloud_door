@@ -3,7 +3,9 @@
 require 'rubygems'
 require 'commander/import'
 require 'watir-webdriver'
-require 'cloud_door'
+require 'zip'
+# require 'cloud_door'
+require './lib/cloud_door'
 
 program :version, '0.0.1'
 program :description, 'access onedrive from CLI'
@@ -70,8 +72,7 @@ command :auth do |c|
       say "Config is not found. Please execute './onedrive config' before."
       exit
     end
-    allow = ask('Do you want to allow access to the onedrive from this system(Y/N)?')
-    exit unless ['Y', 'YES'].include?(allow.upcase)
+    exit unless agree('Do you want to allow access to the onedrive from this system(Y/N)?')
     if options.d
       if (!drive.account.login_account.empty? && !drive.account.login_password.empty?)
         say "found defaulut account '#{drive.account.login_account}'. use this account."
@@ -92,6 +93,14 @@ command :auth do |c|
       user_name = drive.get_onedrive_info('user', 'name')
       say 'login success'
       say "login as #{user_name}"
+      drive.delete_file_list
+      list = drive.show_files
+      if (list.count > 0)
+        say "you have these files on '/top'."
+        list.each { |file_id, name| p "#{name} [#{file_id}]" }
+      else
+        say 'file not found'
+      end
     else
       say 'login fail'
     end
@@ -99,35 +108,89 @@ command :auth do |c|
 end
 
 command :list do |c|
-  c.syntax      = 'onedrive list [file_id]'
+  c.syntax      = 'onedrive list [file_name]'
   c.summary     = 'list onedrive files'
   c.description = 'list onedrive files'
-  c.example 'description', "onedrive list 'file.9999999999999999.999999999999999!9999'"
+  c.example 'description', "onedrive list 'file'"
   c.action do |args, options|
     drive = CloudDoor::OneDrive.new
     drive.set_token
-    drive.file_id = args[0]
-    list = drive.show_dir
+    drive.file_name = args[0]
+    list = drive.show_files
     if (list.count > 0)
-      list.each { |file_id, name| p "#{name} [#{file_id}]" }
+      pwd = drive.show_current_dir
+      say "you have these files on '#{pwd}'."
+      list.each do |name, file_id|
+        type = CloudDoor::OneDrive.get_type_from_id(file_id).ljust(6)
+        p "[#{type}] #{name}"
+      end
     else
       say 'file not found'
     end
   end
 end
 
+command :pwd do |c|
+  c.syntax      = 'onedrive pwd'
+  c.summary     = 'show current directory'
+  c.description = 'show current directory'
+  c.example 'description', "onedrive pwd"
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    drive.set_token
+    say drive.show_current_dir
+  end
+end
+
+command :delete do |c|
+  c.syntax      = 'onedrive delete [file_name]'
+  c.summary     = 'delete file on onedrive'
+  c.description = 'delete file on onedrive'
+  c.example 'description', "onedrive delete 'file'"
+  c.action do |args, options|
+    drive = CloudDoor::OneDrive.new
+    if (args[0].nil? || args[0].empty?)
+      say 'wrong parameter'
+    else
+      pwd = drive.show_current_dir
+      exit unless agree("Do you want to delete '#{pwd}/#{args[0]}' (Y/N)?")
+      drive.set_token
+      drive.file_name = args[0]
+      unless drive.file_exists?
+        say 'file not exists in ondrive'
+        exit
+      end
+      result = drive.delete_file
+      if (result)
+        say 'delete success'
+      else
+        say 'delete fail'
+      end
+    end
+  end
+end
+
 command :download do |c|
-  c.syntax      = 'onedrive download [file_id]'
+  c.syntax      = 'onedrive download [file_name]'
   c.summary     = 'download file from onedrive'
   c.description = 'download file from onedrive'
-  c.example 'description', "onedrive download 'file.9999999999999999.999999999999999!9999'"
+  c.example 'description', "onedrive download 'file'"
   c.action do |args, options|
     drive = CloudDoor::OneDrive.new
     if (args[0].nil? || args[0].empty?)
       say 'wrong parameter'
     else
       drive.set_token
-      drive.file_id = args[0]
+      drive.file_name = args[0]
+      pwd = drive.show_current_dir
+      unless drive.file_exists?
+        say "file not exists in ondrive '#{pwd}/#{args[0]}'"
+        exit
+      end
+      if File.exists?(args[0])
+        say('same name file already exists in local.')
+        exit unless agree("Do you want to overwrite '#{args[0]}' (Y/N)?")
+      end
       result = drive.download_file
       if (result)
         say 'download success'
@@ -139,19 +202,29 @@ command :download do |c|
 end
 
 command :upload do |c|
-  c.syntax      = 'onedrive upload [file], [file_id]'
+  c.syntax      = 'onedrive upload [file_name]'
   c.summary     = 'upload file to onedrive'
   c.description = 'upload file to onedrive'
-  c.example 'description', "onedrive upload 'filename' 'folder.9999999999999999.999999999999999!9999'"
+  c.example 'description', "onedrive upload 'file'"
   c.action do |args, options|
     drive = CloudDoor::OneDrive.new
-    if (args[0].nil? || args[0].empty? || args[1].nil? || args[1].empty?)
+    if (args[0].nil? || args[0].empty?)
       say 'wrong parameter'
     else
       drive.set_token
-      file = args[0]
-      drive.file_id = args[1]
-      result = drive.upload_file(file)
+      drive.up_file_name = args[0]
+      pwd = drive.show_current_dir
+      if File.directory?(args[0])
+        say('this file is directory.')
+        say("upload as '#{args[0]}.zip'.")
+        say("\n")
+      end
+      if drive.file_exists?
+        up_file = drive.get_upload_file_name
+        say('same name file already exists on onedrive.')
+        exit unless agree("Do you want to overwrite '#{pwd}/#{up_file}' (Y/N)?")
+      end
+      result = drive.upload_file
       unless (result.nil?)
         say 'upload success'
       else

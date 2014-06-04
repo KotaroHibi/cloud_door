@@ -6,6 +6,7 @@ require 'cloud_door'
 require 'cloud_door/account'
 require 'cloud_door/cloud_config'
 require 'cloud_door/cloud_yaml'
+require 'cloud_door/file_list'
 require 'cloud_door/token'
 
 def get_instance_variable_values(target)

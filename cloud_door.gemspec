@@ -23,6 +23,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rest-client'
   spec.add_development_dependency 'commander'
+  spec.add_development_dependency 'rubyzip'
   spec.add_development_dependency 'watir'
   spec.add_development_dependency 'watir-webdriver'
   # test libraries
