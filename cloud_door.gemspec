@@ -27,9 +27,10 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'watir'
   spec.add_development_dependency 'watir-webdriver'
   # test libraries
-  spec.add_development_dependency 'rspec'
+  spec.add_development_dependency 'rspec', '~> 2.99.0'
   spec.add_development_dependency 'webmock'
   spec.add_development_dependency 'guard-rspec'
   spec.add_development_dependency 'terminal-notifier-guard'
   spec.add_development_dependency 'fabrication'
+  spec.add_development_dependency 'rubocop'
 end

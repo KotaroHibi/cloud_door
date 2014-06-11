@@ -1,6 +1,7 @@
 require 'yaml'
 require 'logger'
 require 'open-uri'
+require 'date'
 require 'zip'
 require 'rest_client'
 require 'watir-webdriver'
@@ -12,11 +13,13 @@ require 'cloud_door/file_list'
 
 module CloudDoor
   class OneDrive
-    attr_accessor :token, :file_id, :file_name, :up_file_name, :file_list
+    attr_accessor :token, :file_list, :file_id, :file_name, :up_file_name, :mkdir_name, :parent_id
     attr_reader :config, :account
 
     # domain for auth
     AUTH_BASE = "https://login.live.com/"
+    # user root file_id
+    ROOT_ID = "me/skydrive"
     # URL for auth
     AUTH_FORMAT = AUTH_BASE + "oauth20_authorize.srf?client_id=%s&scope=%s&response_type=code&redirect_uri=%s"
     # URL for get token
@@ -27,8 +30,6 @@ module CloudDoor
     USER_FORMAT =  ACTION_BASE + "me?access_token=%s"
     # URL for get directory
     DIR_FORMAT = ACTION_BASE + "%s/files?access_token=%s"
-    # URL for get root directory
-    ROOT_FORMAT = ACTION_BASE + "me/skydrive/files?access_token=%s"
     # URL for get file info
     FILE_FORMAT = ACTION_BASE + "%s?access_token=%s"
     # URL for download file
@@ -37,7 +38,8 @@ module CloudDoor
     UPLOAD_FORMAT = ACTION_BASE + "%s/files?access_token=%s"
     # URL for delete file
     DELETE_FORMAT = ACTION_BASE + "%s?access_token=%s"
-
+    # URL for make directory
+    MKDIR_FORMAT = ACTION_BASE + "%s"
     # update scope
     UPDATE_SCOPE = 'wl.skydrive_update,wl.offline_access'
     # onedrive login site components
@@ -86,40 +88,66 @@ module CloudDoor
       @token.write_token
     end
 
-    def get_onedrive_info(target, key)
+    def get_onedrive_info(target, key=nil)
       if ['user', 'dir', 'file'].include?(target)
         info = send("request_#{target}".to_sym)
       else
         return nil
       end
-      return nil if (info.nil? || !info.is_a?(Hash) || !info.has_key?(key))
-      info[key]
+      return nil if (info.nil? || !info.is_a?(Hash))
+      if key.nil?
+        info
+      else
+        return nil unless info.has_key?(key)
+        info[key]
+      end
     end
 
-    def show_files
-      return {} unless set_file_id
-      return {} if @file_id =~ FILE_ID_PAT
+    def show_files(write = true)
+      return nil unless set_file_id
+      return nil if is_file?
       items = get_files
-      write_file_list(items)
+      @file_list.write_file_list(items, @file_id, @file_name) if write
       items
     end
 
     def show_current_dir
-      return false if @file_list.load_list == false
-      list = @file_list.list
-      return '/top' if (list.size < 2)
-      files = []
-      list.each { |part| files << part['name'] unless part['name'].nil? }
-      '/' + files.join('/')
+      @file_list.get_current_dir
+    end
+
+    def show_property()
+      return false if (@file_name.nil? || @file_name.empty?)
+      return {} unless set_file_id
+      info = get_onedrive_info('file')
+      return {} if info.nil?
+      if is_file?
+        properties = %w(name id type size created_time updated_time)
+      else
+        properties = %w(name id type size count created_time updated_time)
+      end
+      items = {}
+      properties.each do |property|
+        if property =~ /_time$/
+          value = DateTime.parse(info[property]).strftime("%Y-%m-%d %H:%M:%S")
+        else
+          value = info[property]
+        end
+        items[property] = value
+      end
+      items
+    rescue
+      {}
     end
 
     def delete_file
       begin
         return false if (@file_name.nil? || @file_name.empty?)
         return false unless set_file_id
-        return false unless @file_id =~ FILE_ID_PAT
         # if not raise error, judge that's success
         request_delete
+        @parent_id = get_parent_id
+        items = get_files
+        @file_list.write_file_list(items)
         true
       rescue
         false
@@ -130,7 +158,7 @@ module CloudDoor
       begin
         return false if (@file_name.nil? || @file_name.empty?)
         return false unless set_file_id
-        return false unless @file_id =~ FILE_ID_PAT
+        return false unless is_file?
         key  = 'location'
         info = request_download
         return false if (info.nil? || !info.is_a?(Hash) || !info.has_key?(key))
@@ -145,17 +173,20 @@ module CloudDoor
     end
 
     def upload_file
+      return false if (@up_file_name.nil? || @up_file_name.empty?)
       return false unless File.exists?(@up_file_name)
-      @file_id = convert_name_to_id('current')
+      @parent_id = get_parent_id
       up_file = get_upload_file_name
       begin
         # if not raise error, judge that's success
         info = request_upload(up_file)
+        items = get_files
+        @file_list.write_file_list(items)
+        File.delete(up_file) if File.directory?(@up_file_name)
         true
       rescue
-        false
-      ensure
         File.delete(up_file) if File.directory?(@up_file_name)
+        false
       end
     end
 
@@ -167,20 +198,49 @@ module CloudDoor
       end
     end
 
+    def make_directory
+      return false if (@mkdir_name.nil? || @mkdir_name.empty?)
+      @parent_id = get_parent_id
+      begin
+        # if not raise error, judge that's success
+        info = request_mkdir
+        items = get_files
+        @file_list.write_file_list(items)
+        true
+      rescue
+        false
+      end
+    end
+
     def delete_file_list
       @file_list.delete_file
     end
 
     def file_exists?
-      if @file_name
-        file_name = @file_name
-      else
+      if @up_file_name
         file_name = get_upload_file_name
+      elsif @mkdir_name
+        file_name = @mkdir_name
+      else
+        file_name = @file_name
       end
-      @file_id = convert_name_to_id('current')
+      @parent_id = get_parent_id
       items = get_files
       return false if (items.empty? || !items.is_a?(Hash))
       items.has_key?(file_name)
+    end
+
+    def has_file?
+      return false if (@file_name.nil? || @file_name.empty?)
+      return false unless set_file_id
+      return false if is_file?
+      info = show_property
+      return false if (info.nil? || !info.is_a?(Hash) || !info.has_key?('size'))
+      (info['count'] > 0)
+    end
+
+    def is_file?
+      @file_id =~ FILE_ID_PAT ? true : false
     end
 
     def login_browser
@@ -225,37 +285,15 @@ module CloudDoor
       else
         mode = 'target'
       end
-      file_id = convert_name_to_id(mode)
+      file_id = @file_list.convert_name_to_id(mode, @file_name)
       return false if (file_id == false)
       @file_id = file_id
       true
     end
 
-    def convert_name_to_id(mode)
-      return false if @file_list.load_list == false
-      list = @file_list.list
-      if (mode == 'current')
-        if (list.count < 2)
-          file_id = nil
-        else
-          file_id = list.last['id']
-        end
-      elsif (mode == 'parent')
-        back = (@file_name.scan(PARENT_DIR_PAT).size) + 1
-        return false if (list.size < back)
-        last = list.size - back
-        if last == 0
-          file_id = nil
-        else
-          file_id = list[list.size - back]['id']
-        end
-      elsif (mode == 'target')
-        return false if (list.empty?)
-        items = list.last['items']
-        return false if (items.empty? || !items.has_key?(@file_name))
-        file_id = items[@file_name]
-      end
-      file_id
+    def get_parent_id
+      parent_id = @file_list.get_parent_id
+      return parent_id || ROOT_ID
     end
 
     def compress_file
@@ -268,20 +306,6 @@ module CloudDoor
         end
       end
       filename = zip_file_name
-    end
-
-    def write_file_list(items)
-      return false if @file_list.load_list == false
-      list = @file_list.list
-      if (list.empty?)
-        @file_list.add_list_top(items)
-      elsif (@file_name =~ PARENT_DIR_PAT)
-        back = @file_name.scan(PARENT_DIR_PAT).size + 1
-        @file_list.remove_list(back)
-      else
-        return true if (@file_name.nil? || @file_name.empty?)
-        @file_list.add_list(@file_id, @file_name, items)
-      end
     end
 
     def send_request(method, url, body='', header={})
@@ -317,7 +341,9 @@ module CloudDoor
       logger = Logger.new(LOG_FILE)
       log = "request:\n#{request.args.inspect}\n"
       log << "result:\n#{result.inspect}\n"
-      log << "response:\n#{JSON.parse(response.body).inspect}\n"
+      # unless response.body.nil?
+        log << "response:\n#{JSON.parse(response.body).inspect}\n"
+      # end
       logger.info(log)
     end
 
@@ -358,11 +384,8 @@ module CloudDoor
     end
 
     def request_dir
-      if (@file_id.nil? || @file_id.empty?)
-        url = ROOT_FORMAT % @token.access_token
-      else
-        url = DIR_FORMAT % [@file_id, @token.access_token]
-      end
+      file_id = @parent_id || @file_id || ROOT_ID
+      url = DIR_FORMAT % [file_id, @token.access_token]
       send_request(:get, url)
     end
 
@@ -377,13 +400,24 @@ module CloudDoor
     end
 
     def request_upload(file)
-      url = UPLOAD_FORMAT % [@file_id, @token.access_token]
+      url = UPLOAD_FORMAT % [@parent_id, @token.access_token]
       send_request(:post_file, url, File.new(file, 'rb'))
     end
 
     def request_delete
       url = DELETE_FORMAT % [@file_id, @token.access_token]
       send_request(:delete, url)
+    end
+
+    def request_mkdir
+      file_id = @parent_id || ROOT_ID
+      url = MKDIR_FORMAT % file_id
+      body = JSON({'name' => @mkdir_name})
+      header = {
+        'Authorization' => "Bearer #{@token.access_token}",
+        'Content-Type'  => 'application/json'
+      }
+      send_request(:post, url, body, header)
     end
   end
 end

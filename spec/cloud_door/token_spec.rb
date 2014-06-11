@@ -18,7 +18,7 @@ describe 'Token' do
     it { expect(token.access_token).to eq 'access_token' }
     it { expect(token.refresh_token).to eq 'refresh_token' }
     it { expect(token.user_id).to eq 1 }
-    it { expect(token.instance_variable_defined?(:@dummy)).to be_false }
+    it { expect(token.instance_variable_defined?(:@dummy)).to be_falsey }
   end
 
   describe 'write_token' do
@@ -28,11 +28,11 @@ describe 'Token' do
     end
     context 'success' do
       let(:token) { Fabricate.build(:token, :token_file => '.test') }
-      it { expect(subject).to be_true }
+      it { is_expected.to be_truthy }
     end
     context 'fail' do
       let(:token) { Fabricate.build(:token, :token_file => nil) }
-      it { expect(subject).to be_false }
+      it { is_expected.to be_falsey }
     end
     after (:all) do
       File.delete('.test') if File.exists?('.test')
@@ -48,8 +48,8 @@ describe 'Token' do
         open(token_file, 'wb') { |file| file << Marshal.dump(token_org) }
         @token = Token.load_token(token_file)
       end
-      it { expect(subject).to be_true }
-      it { expect(@token.is_a?(Token)).to be_true }
+      it { is_expected.to be_truthy }
+      it { expect(@token.is_a?(Token)).to be_truthy }
       it {
         token_values     = get_instance_variable_values(@token)
         token_org_values = get_instance_variable_values(token_org)
@@ -58,13 +58,13 @@ describe 'Token' do
     end
     context 'fail' do
       context 'file not exists' do
-        it { expect(subject).to be_nil }
+        it { is_expected.to be_nil }
       end
       context 'class is not Token' do
         before (:each) do
           open(token_file, 'wb') { |file| file << Marshal.dump('test') }
         end
-        it { expect(subject).to be_nil }
+        it { is_expected.to be_nil }
       end
     end
     after (:each) do

@@ -37,7 +37,7 @@ describe 'CloudConfig' do
     context 'onedrive' do
       let(:account) { Fabricate.build(:cloud_config, :storage => 'onedrive', :file => config_file) }
       let(:update_params) { {'client_id' => '1234', 'client_secret' => 'abcd', 'redirect_url' => 'onedrive'} }
-      it { expect(File.exists?(config_file)).to be_true }
+      it { expect(File.exists?(config_file)).to be_truthy }
       it { expect(YAML.load_file(config_file)['onedrive']['client_id']).to eq '1234' }
       it { expect(YAML.load_file(config_file)['onedrive']['client_secret']).to eq 'abcd' }
       it { expect(YAML.load_file(config_file)['onedrive']['redirect_url']).to eq 'onedrive' }
@@ -45,7 +45,7 @@ describe 'CloudConfig' do
     context 'dropbox' do
       let(:account) { Fabricate.build(:cloud_config, :storage => 'dropbox', :file => config_file) }
       let(:update_params) { {'client_id' => '5678', 'client_secret' => 'efgh', 'redirect_url' => 'dropbox'} }
-      it { expect(File.exists?(config_file)).to be_true }
+      it { expect(File.exists?(config_file)).to be_truthy }
       it { expect(YAML.load_file(config_file)['dropbox']['client_id']).to eq '5678' }
       it { expect(YAML.load_file(config_file)['dropbox']['client_secret']).to eq 'efgh' }
       it { expect(YAML.load_file(config_file)['dropbox']['redirect_url']).to eq 'dropbox' }
@@ -56,18 +56,18 @@ describe 'CloudConfig' do
   end
 
   describe 'is_init?' do
-    let(:config) { Fabricate.build(:cloud_config) }
     subject { config.is_init? }
+    let(:config) { Fabricate.build(:cloud_config) }
     context 'initialized' do
       before (:each) do
         config.client_id     = '1234'
         config.client_secret = 'abcd'
         config.redirect_url  = 'onedrive'
       end
-      it { expect(subject).to be_true }
+      it { is_expected.to be_truthy }
     end
     context 'not initialized' do
-      it { expect(subject).to be_false }
+      it { is_expected.to be_falsey }
     end
   end
 end

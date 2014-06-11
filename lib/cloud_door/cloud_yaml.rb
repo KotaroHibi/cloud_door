@@ -22,7 +22,7 @@ class CloudYaml
       all_config = {}
       config     = {}
     end
-      @items.each do |item|
+    @items.each do |item|
       next unless update_params.has_key?(item)
       config[item] = update_params[item]
     end

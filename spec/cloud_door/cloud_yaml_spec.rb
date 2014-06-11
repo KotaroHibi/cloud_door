@@ -11,15 +11,15 @@ describe 'CloudYaml' do
     end
     context 'file & storage exists' do
       let(:account) { Fabricate.build(:cloud_yaml, :file => account_file) }
-      it { expect(subject).to be_true }
+      it { is_expected.to be_truthy }
     end
     context 'file not exists' do
       let(:account) { Fabricate.build(:cloud_yaml, :file => 'example.yml') }
-      it { expect(subject).to be_false }
+      it { is_expected.to be_falsey }
     end
     context 'storage exists' do
       let(:account) { Fabricate.build(:cloud_yaml, :file => account_file, :storage => 'example') }
-      it { expect(subject).to be_false }
+      it { is_expected.to be_falsey }
     end
     after (:all) do
       File.delete(account_file) if File.exists?(account_file)
