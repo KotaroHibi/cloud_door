@@ -3,15 +3,20 @@ require 'spec_helper'
 describe 'Token' do
   describe 'set_attributes' do
     let(:token) { Token.new }
-    before (:each) { token.set_attributes({
-      'token_type'    => 'bearer',
-      'expires_in'    => 3600,
-      'scope'         => 'wl.skydrive',
-      'access_token'  => 'access_token',
-      'refresh_token' => 'refresh_token',
-      'user_id'       => 1,
-      'dummy'         => 'dummy',
-    })}
+    let(:attributes) do
+      {
+        'token_type'    => 'bearer',
+        'expires_in'    => 3600,
+        'scope'         => 'wl.skydrive',
+        'access_token'  => 'access_token',
+        'refresh_token' => 'refresh_token',
+        'user_id'       => 1,
+        'dummy'         => 'dummy'
+      }
+    end
+    before(:each) do
+      token.set_attributes(attributes)
+    end
     it { expect(token.token_type).to eq 'bearer' }
     it { expect(token.expires_in).to eq 3600 }
     it { expect(token.scope).to eq 'wl.skydrive' }
@@ -23,19 +28,19 @@ describe 'Token' do
 
   describe 'write_token' do
     subject { token.write_token }
-    before (:all) do
-      File.delete('.test') if File.exists?('.test')
+    before(:all) do
+      File.delete('.test') if File.exist?('.test')
     end
     context 'success' do
-      let(:token) { Fabricate.build(:token, :token_file => '.test') }
+      let(:token) { Fabricate.build(:token, token_file: '.test') }
       it { is_expected.to be_truthy }
     end
     context 'fail' do
-      let(:token) { Fabricate.build(:token, :token_file => nil) }
+      let(:token) { Fabricate.build(:token, token_file: nil) }
       it { is_expected.to be_falsey }
     end
-    after (:all) do
-      File.delete('.test') if File.exists?('.test')
+    after(:all) do
+      File.delete('.test') if File.exist?('.test')
     end
   end
 
@@ -44,31 +49,31 @@ describe 'Token' do
     let(:token_file) { '.test' }
     context 'success' do
       let(:token_org) { Fabricate.build(:token) }
-      before (:each) do
+      before(:each) do
         open(token_file, 'wb') { |file| file << Marshal.dump(token_org) }
         @token = Token.load_token(token_file)
       end
       it { is_expected.to be_truthy }
       it { expect(@token.is_a?(Token)).to be_truthy }
-      it {
+      it do
         token_values     = get_instance_variable_values(@token)
         token_org_values = get_instance_variable_values(token_org)
         expect(token_values).to eq token_org_values
-      }
+      end
     end
     context 'fail' do
       context 'file not exists' do
         it { is_expected.to be_nil }
       end
       context 'class is not Token' do
-        before (:each) do
+        before(:each) do
           open(token_file, 'wb') { |file| file << Marshal.dump('test') }
         end
         it { is_expected.to be_nil }
       end
     end
-    after (:each) do
-      File.delete(token_file) if File.exists?(token_file)
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
     end
   end
 end

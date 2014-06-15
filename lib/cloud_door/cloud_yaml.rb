@@ -6,10 +6,10 @@ class CloudYaml
     return false unless File.exist?(@file)
     all_config = YAML.load_file(@file)
     return false unless all_config.is_a?(Hash)
-    return false unless all_config.has_key?(@storage)
+    return false unless all_config.key?(@storage)
     config = all_config[@storage]
     @items.each do |item|
-      instance_variable_set("@#{item}", config[item]) if config.has_key?(item)
+      instance_variable_set("@#{item}", config[item]) if config.key?(item)
     end
     true
   end
@@ -23,10 +23,15 @@ class CloudYaml
       config     = {}
     end
     @items.each do |item|
-      next unless update_params.has_key?(item)
+      next unless update_params.key?(item)
       config[item] = update_params[item]
     end
-    all_config[@storage] = config
-    open(@file, 'wb') { |f| YAML.dump(all_config, f) }
+    begin
+      all_config[@storage] = config
+      open(@file, 'wb') { |f| YAML.dump(all_config, f) }
+      true
+    rescue
+      false
+    end
   end
 end

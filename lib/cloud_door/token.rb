@@ -1,5 +1,6 @@
 class Token
-  attr_accessor :token_file, :token_type, :expires_in, :scope, :access_token, :refresh_token, :user_id
+  attr_accessor :token_file, :token_type, :expires_in, :scope, :access_token,
+                :refresh_token, :user_id
 
   TOKEN_FILE = 'onedrive_token'
 
@@ -9,7 +10,7 @@ class Token
     'scope',
     'access_token',
     'refresh_token',
-    'user_id',
+    'user_id'
   ]
 
   def initialize
@@ -18,30 +19,26 @@ class Token
 
   def set_attributes(attributes)
     TOKEN_ITEMS.each do |item|
-      instance_variable_set("@#{item}", attributes[item]) if attributes.has_key?(item)
+      instance_variable_set("@#{item}", attributes[item]) if attributes.key?(item)
     end
   end
 
   def write_token
-    begin
-      marshal = Marshal.dump(self)
-      open(@token_file, 'wb') { |file| file << marshal }
-      true
-    rescue
-      false
-    end
+    marshal = Marshal.dump(self)
+    open(@token_file, 'wb') { |file| file << marshal }
+    true
+  rescue
+    false
   end
 
-  def self.load_token(token_file='')
-    begin
-      token_file = TOKEN_FILE if (token_file.nil? || token_file.empty?)
-      return nil unless File.exists?(token_file)
-      marshal = File.open(token_file).read
-      token = Marshal.load(marshal)
-      return nil unless token.is_a?(Token)
-      token
-    rescue
-      nil
-    end
+  def self.load_token(token_file = '')
+    token_file = TOKEN_FILE if token_file.nil? || token_file.empty?
+    return nil unless File.exist?(token_file)
+    marshal = File.open(token_file).read
+    token = Marshal.load(marshal)
+    return nil unless token.is_a?(Token)
+    token
+  rescue
+    nil
   end
 end

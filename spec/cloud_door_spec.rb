@@ -11,7 +11,7 @@ def capture_stdout(&block)
   fake.string
 end
 
-def create_onedrive(file_id=nil)
+def create_onedrive(file_id = nil)
   storage = CloudDoor::OneDrive.new
   storage.file_id              = file_id
   storage.token.token_file     = '.testtoken'
@@ -24,8 +24,8 @@ def create_onedrive(file_id=nil)
 end
 
 describe 'OneDrive' do
-  describe 'get_auth_url' do
-    subject { storage.get_auth_url }
+  describe 'make_auth_url' do
+    subject { storage.make_auth_url }
     let(:storage) { create_onedrive }
     let(:url) {
       CloudDoor::OneDrive::AUTH_FORMAT %
@@ -34,19 +34,19 @@ describe 'OneDrive' do
     it { is_expected.to eq url }
   end
 
-  describe 'set_token' do
+  describe 'load_token' do
     let(:token) { Fabricate.build(:token) }
     let(:storage) { create_onedrive }
     let(:token_file) { storage.token.token_file }
-    before (:each) do
+    before(:each) do
       open(token_file, 'wb') { |file| file << Marshal.dump(token) }
     end
-    it {
-      token = storage.set_token(token_file)
+    it do
+      token = storage.load_token(token_file)
       expect(token.is_a?(Token)).to be_truthy
-    }
-    after (:each) do
-      File.delete(token_file) if File.exists?(token_file)
+    end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
     end
   end
 
@@ -57,25 +57,35 @@ describe 'OneDrive' do
     let(:code) { '5678' }
     let(:url) { CloudDoor::OneDrive::TOKEN_URL + "?code=#{code}" }
     context 'success' do
-      before (:each) do
-        body = JSON({'access_token' => 'token'})
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          to_return(:status => 200, :body => body, :headers => {})
+      before(:each) do
+        body = JSON('access_token' => 'token')
+        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+          .to_return(status: 200, body: body)
       end
       it { is_expected.to be_truthy }
-      it { expect(File.exists?(token_file)).to be_truthy }
+      it { expect(File.exist?(token_file)).to be_truthy }
       it { expect(Marshal.load(File.open(token_file).read).access_token).to eq 'token' }
-      after (:all) do
-        File.delete('.testtoken') if File.exists?('.testtoken')
+      after(:all) do
+        File.delete('.testtoken') if File.exist?('.testtoken')
       end
     end
     context 'fail' do
-      before (:each) do
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          to_return(:status => 404)
+      context 'nil return' do
+        before(:each) do
+          WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+            .to_return(status: 200, body: nil)
+        end
+        it { expect { subject }.to raise_error(CloudDoor::NoDataException) }
+        it { expect(File.exist?(token_file)).to be_falsey }
       end
-      it { is_expected.to be_falsey }
-      it { expect(File.exists?(token_file)).to be_falsey }
+      context 'request fail' do
+        before(:each) do
+          WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+            .to_return(status: 401)
+        end
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
+        it { expect(File.exist?(token_file)).to be_falsey }
+      end
     end
   end
 
@@ -84,40 +94,49 @@ describe 'OneDrive' do
     let(:storage) { create_onedrive }
     let(:token_file) { storage.token.token_file }
     context 'success' do
-      body = JSON({'access_token' => 'token'})
-      before (:each) do
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          to_return(:status => 200, :body => body, :headers => {})
+      body = JSON('access_token' => 'token')
+      before(:each) do
+        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+          .to_return(status: 200, body: body)
       end
       it { is_expected.to be_truthy }
-      it { expect(File.exists?(token_file)).to be_truthy }
+      it { expect(File.exist?(token_file)).to be_truthy }
       it { expect(Marshal.load(File.open(token_file).read).access_token).to eq 'token' }
-      after (:all) do
-        File.delete('.testtoken') if File.exists?('.testtoken')
+      after(:all) do
+        File.delete('.testtoken') if File.exist?('.testtoken')
       end
     end
     context 'fail' do
-      before (:each) do
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          to_return(:status => 404)
+      context 'nil return' do
+        before(:each) do
+          WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+            .to_return(status: 200, body: nil)
+        end
+        it { expect { subject }.to raise_error(CloudDoor::NoDataException) }
+        it { expect(File.exist?(token_file)).to be_falsey }
       end
-      it { is_expected.to be_falsey }
-      it { expect(File.exists?(token_file)).to be_falsey }
+      context 'request fail' do
+        before(:each) do
+          WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+            .to_return(status: 401)
+        end
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
+        it { expect(File.exist?(token_file)).to be_falsey }
+      end
     end
   end
 
-  describe 'get_onedrive_info' do
-    subject { storage.get_onedrive_info(target, key) }
+  describe 'get_cloud_info' do
+    subject { storage.get_cloud_info(target, key) }
     let(:storage) { create_onedrive }
     let(:access_token) { storage.token.access_token }
     context 'user' do
       let(:target) { 'user' }
       let(:key) { 'name' }
       let(:url) { CloudDoor::OneDrive::USER_FORMAT % access_token }
-      before (:each) do
-        body = JSON({'name' => 'onedrive'})
-        WebMock.stub_request(:get, url).
-          to_return(:status => 200, :body => body, :headers => {})
+      before(:each) do
+        body = JSON('name' => 'onedrive')
+        WebMock.stub_request(:get, url).to_return(status: 200, body: body)
       end
       it { is_expected.to eq 'onedrive' }
     end
@@ -126,20 +145,18 @@ describe 'OneDrive' do
       let(:key) { 'data' }
       context 'root' do
         let(:url) { CloudDoor::OneDrive::DIR_FORMAT % [CloudDoor::OneDrive::ROOT_ID, access_token] }
-        before (:each) do
-          body = JSON({'data' => ['onedrive']})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('data' => ['onedrive'])
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to eq ['onedrive'] }
       end
       context 'dir' do
         let(:storage) { create_onedrive('1234') }
         let(:url) { CloudDoor::OneDrive::DIR_FORMAT % [storage.file_id, access_token] }
-        before (:each) do
-          body = JSON({'data' => ['onedrive']})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('data' => ['onedrive'])
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to eq ['onedrive'] }
       end
@@ -148,10 +165,9 @@ describe 'OneDrive' do
       let(:storage) { create_onedrive('1234') }
       let(:target) { 'file' }
       let(:url) { CloudDoor::OneDrive::FILE_FORMAT % [storage.file_id, access_token] }
-      before (:each) do
-        body = JSON({'name' => 'onedrive', 'id' => '1234'})
-        WebMock.stub_request(:get, url).
-          to_return(:status => 200, :body => body, :headers => {})
+      before(:each) do
+        body = JSON('name' => 'onedrive', 'id' => '1234')
+        WebMock.stub_request(:get, url).to_return(status: 200, body: body)
       end
       context 'key set' do
         let(:key) { 'name' }
@@ -159,7 +175,7 @@ describe 'OneDrive' do
       end
       context 'key not set' do
         let(:key) { nil }
-        it { is_expected.to eq({'name' => 'onedrive', 'id' => '1234'}) }
+        it { is_expected.to eq('name' => 'onedrive', 'id' => '1234') }
       end
     end
     context 'fail' do
@@ -168,28 +184,25 @@ describe 'OneDrive' do
       let(:key) { 'name' }
       context 'target not exists' do
         let(:target) { 'member' }
-        before (:each) do
-          body = JSON({'name' => 'onedrive'})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('name' => 'onedrive')
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
-        it { is_expected.to be_nil }
+        it { expect { subject }.to raise_error(CloudDoor::RequestMethodNotFoundException) }
       end
       context 'key not exists' do
         let(:key) { 'firstname' }
-        before (:each) do
-          body = JSON({'name' => 'onedrive'})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('name' => 'onedrive')
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
-        it { is_expected.to be_nil }
+        it { expect { subject }.to raise_error(CloudDoor::RequestPropertyNotFoundException) }
       end
       context 'request fail' do
-        before (:each) do
-          WebMock.stub_request(:get, url).
-            to_return(:status => 404, :body => {}, :headers => {})
+        before(:each) do
+          WebMock.stub_request(:get, url).to_return(status: 401)
         end
-        it { is_expected.to be_nil }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
   end
@@ -197,47 +210,51 @@ describe 'OneDrive' do
   describe 'show_files' do
     subject { storage.show_files }
     let(:storage) { create_onedrive }
-    let(:url) {
+    let(:url) do
       CloudDoor::OneDrive::DIR_FORMAT % [CloudDoor::OneDrive::ROOT_ID, storage.token.access_token]
-    }
+    end
     let(:list_file) { storage.file_list.list_file }
     context 'success' do
-      before (:each) do
-        body = JSON({'data' => [
+      before(:each) do
+        body = JSON('data' => [
           {'id' => 'file.1234', 'name' => 'onedrive'},
           {'id' => 'file.5678', 'name' => 'skydrive'}
-        ]})
-        WebMock.stub_request(:get, url).
-          to_return(:status => 200, :body => body, :headers => {})
+        ])
+        WebMock.stub_request(:get, url).to_return(status: 200, body: body)
       end
-      it { is_expected.to eq({'onedrive' => 'file.1234', 'skydrive' => 'file.5678'}) }
+      it { is_expected.to eq('onedrive' => 'file.1234', 'skydrive' => 'file.5678') }
     end
     context 'fail' do
       context 'data not exists' do
-        before (:each) do
-          body = JSON({'data' => []})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('data' => [])
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to eq({}) }
       end
       context 'file id not exits' do
-        before (:each) do
+        before(:each) do
           storage.file_name = 'test'
         end
-        it { is_expected.to be_nil }
+        it { expect { subject }.to raise_error(CloudDoor::SetIDException) }
       end
       context 'not directory' do
-        before (:each) do
+        before(:each) do
           list = [{'items' => {'test' => 'file.1234'}}]
           open(list_file, 'wb') { |file| file << Marshal.dump(list) }
           storage.file_name = 'test'
         end
-        it { is_expected.to be_nil }
+        it { expect { subject }.to raise_error(CloudDoor::NotDirectoryException) }
+      end
+      context 'request fail' do
+        before(:each) do
+          WebMock.stub_request(:get, url).to_return(status: 401)
+        end
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
@@ -254,69 +271,72 @@ describe 'OneDrive' do
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
     let(:url) { CloudDoor::OneDrive::FILE_FORMAT % [storage.file_id, access_token] }
-    before (:each) do
+    before(:each) do
       list = [{'items' => {'file' => 'file.1234', 'folder' => 'folder.5678'}}]
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
     context 'success' do
       context 'file' do
-        let(:info) { {
-          'name'         => 'file',
-          'id'           => 'file.1234',
-          'type'         => 'file',
-          'size'         => 1024,
-          'created_time' => '2014-06-01 12:20:30',
-          'updated_time' => '2014-06-05 13:30:40',
-        } }
-        before (:each) do
+        let(:info) do
+          {
+            'name'         => 'file',
+            'id'           => 'file.1234',
+            'type'         => 'file',
+            'size'         => 1024,
+            'created_time' => '2014-06-01 12:20:30',
+            'updated_time' => '2014-06-05 13:30:40'
+          }
+        end
+        before(:each) do
           storage.file_id = 'file.1234'
           storage.file_name = 'file'
           body = JSON(info)
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to eq info }
       end
       context 'folder' do
-        let(:info) { {
-          'name'         => 'folder',
-          'id'           => 'folder.5678',
-          'type'         => 'folder',
-          'size'         => 1024,
-          'count'        => 5,
-          'created_time' => '2014-06-01 12:20:30',
-          'updated_time' => '2014-06-05 13:30:40',
-        } }
-        before (:each) do
+        let(:info) do
+          {
+            'name'         => 'folder',
+            'id'           => 'folder.5678',
+            'type'         => 'folder',
+            'size'         => 1024,
+            'count'        => 5,
+            'created_time' => '2014-06-01 12:20:30',
+            'updated_time' => '2014-06-05 13:30:40'
+          }
+        end
+        before(:each) do
           storage.file_id = 'folder.5678'
           storage.file_name = 'folder'
           body = JSON(info)
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to eq info }
       end
     end
     context 'fail' do
       context 'file name not input' do
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::FileNameEmptyException) }
       end
       context 'file id not exits' do
-        before (:each) do
+        before(:each) do
           storage.file_name = 'test'
         end
-        it { is_expected.to be_empty  }
+        it { expect { subject }.to raise_error(CloudDoor::SetIDException) }
       end
       context 'request fail' do
-        before (:each) do
-          storage.file_name = 'test'
-          WebMock.stub_request(:get, url).to_return(:status => 404)
+        before(:each) do
+          storage.file_id = 'file.1234'
+          storage.file_name = 'file'
+          WebMock.stub_request(:get, url).to_return(status: 401)
         end
-        it { is_expected.to be_empty  }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
@@ -325,41 +345,42 @@ describe 'OneDrive' do
     let(:storage) { create_onedrive }
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
-    let(:url) { CloudDoor::OneDrive::DELETE_FORMAT % [ 'file.1234', access_token ] }
-    let(:info_url) { CloudDoor::OneDrive::DIR_FORMAT % [ CloudDoor::OneDrive::ROOT_ID, access_token ] }
+    let(:url) { CloudDoor::OneDrive::DELETE_FORMAT % ['file.1234', access_token] }
+    let(:info_url) { CloudDoor::OneDrive::DIR_FORMAT % [CloudDoor::OneDrive::ROOT_ID, access_token] }
     context 'success' do
-      before (:each) do
+      before(:each) do
         list = [{'items' => {'test' => 'file.1234'}}]
         open(list_file, 'wb') { |file| file << Marshal.dump(list) }
         storage.file_name = 'test'
-        WebMock.stub_request(:delete, url).to_return(:status => 200)
-        WebMock.stub_request(:get, info_url).to_return(:status => 200)
+        body = JSON('data' => [{'id' => 'file.1234', 'name' => 'onedrive'}])
+        WebMock.stub_request(:delete, url).to_return(status: 200, body: '{}')
+        WebMock.stub_request(:get, info_url).to_return(status: 200, body: body)
       end
       it { is_expected.to be_truthy }
     end
     context 'fail' do
       context 'file name not input' do
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::FileNameEmptyException) }
       end
       context 'file id not exits' do
-        before (:each) do
+        before(:each) do
           storage.file_name = 'test'
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::SetIDException) }
       end
       context 'request fail' do
-        before (:each) do
+        before(:each) do
           list = [{'items' => {'test' => 'file.1234'}}]
           open(list_file, 'wb') { |file| file << Marshal.dump(list) }
           storage.file_name = 'test'
-          WebMock.stub_request(:delete, url).to_return(:status => 404)
-          WebMock.stub_request(:get, info_url).to_return(:status => 404)
+          WebMock.stub_request(:delete, url).to_return(status: 401)
+          WebMock.stub_request(:get, info_url).to_return(status: 401)
         end
-        it { is_expected.to be_truthy }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
@@ -368,54 +389,51 @@ describe 'OneDrive' do
     let(:storage) { create_onedrive }
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
-    let(:url) { CloudDoor::OneDrive::DOWNLOAD_FORMAT % [ 'file.1234', access_token ] }
+    let(:url) { CloudDoor::OneDrive::DOWNLOAD_FORMAT % ['file.1234', access_token] }
     context 'success' do
-      before (:each) do
+      before(:each) do
         list = [{'items' => {'test' => 'file.1234'}}]
         open(list_file, 'wb') { |file| file << Marshal.dump(list) }
         storage.file_name = 'test'
-        body = JSON({'location' => 'http://localhost'})
-        WebMock.stub_request(:get, url).
-          to_return(:status => 200, :body => body, :headers => {})
-        WebMock.stub_request(:get, 'http://localhost').
-          to_return(:status => 200, :body => 'test', :headers => {})
+        body = JSON('location' => 'http://localhost')
+        WebMock.stub_request(:get, url).to_return(status: 200, body: body)
+        WebMock.stub_request(:get, 'http://localhost').to_return(status: 200, body: 'test')
       end
       it { is_expected.to be_truthy }
-      after (:each) do
-        File.delete('test') if File.exists?('test')
+      after(:each) do
+        File.delete('test') if File.exist?('test')
       end
     end
     context 'fail' do
       context 'file name not input' do
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::FileNameEmptyException) }
       end
       context 'file id not exits' do
-        before (:each) do
+        before(:each) do
           storage.file_name = 'test'
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::SetIDException) }
       end
       context 'not file' do
-        before (:each) do
+        before(:each) do
           list = [{'items' => {'test' => 'folder.1234'}}]
           open(list_file, 'wb') { |file| file << Marshal.dump(list) }
           storage.file_name = 'test'
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::NotFileException) }
       end
       context 'request fail' do
-        before (:each) do
+        before(:each) do
           list = [{'items' => {'test' => 'file.1234'}}]
           open(list_file, 'wb') { |file| file << Marshal.dump(list) }
           storage.file_name = 'test'
-          body = JSON({'name' => 'onedrive'})
-          WebMock.stub_request(:get, url).to_return(:status => 404)
+          WebMock.stub_request(:get, url).to_return(status: 401)
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
@@ -425,62 +443,63 @@ describe 'OneDrive' do
     let(:list_file) { storage.file_list.list_file }
     let(:up_file) { 'upload' }
     let(:access_token) { storage.token.access_token }
-    let(:url) { CloudDoor::OneDrive::UPLOAD_FORMAT % [ CloudDoor::OneDrive::ROOT_ID, access_token ] }
-    let(:info_url) { CloudDoor::OneDrive::DIR_FORMAT % [ CloudDoor::OneDrive::ROOT_ID, access_token ] }
+    let(:url) { CloudDoor::OneDrive::UPLOAD_FORMAT % [CloudDoor::OneDrive::ROOT_ID, access_token] }
+    let(:info_url) { CloudDoor::OneDrive::DIR_FORMAT % [CloudDoor::OneDrive::ROOT_ID, access_token] }
     context 'success' do
-      before (:each) do
+      before(:each) do
         open(up_file, 'wb') { |file| file << 'upload' }
         storage.up_file_name = up_file
-        WebMock.stub_request(:post, url).to_return(:status => 200)
-        WebMock.stub_request(:get, info_url).to_return(:status => 200)
+        body = JSON('data' => [{'id' => 'file.1234', 'name' => 'onedrive'}])
+        WebMock.stub_request(:post, url).to_return(status: 200, body: '{}')
+        WebMock.stub_request(:get, info_url).to_return(status: 200, body: body)
       end
       it { is_expected.to be_truthy }
     end
     context 'fail' do
       context 'upload file name not input' do
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::FileNameEmptyException) }
       end
       context 'file not exits' do
-        before (:each) do
+        before(:each) do
           storage.up_file_name = up_file
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::FileNotExistsException) }
       end
       context 'request fail' do
-        before (:each) do
+        before(:each) do
           open(up_file, 'wb') { |file| file << 'upload' }
           storage.up_file_name = up_file
-          WebMock.stub_request(:post, url).to_return(:status => 404)
-          WebMock.stub_request(:get, info_url).to_return(:status => 404)
+          WebMock.stub_request(:post, url).to_return(status: 401)
+          WebMock.stub_request(:get, info_url).to_return(status: 401)
         end
-        it { is_expected.to be_truthy }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(up_file) if File.exists?(up_file)
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(up_file) if File.exist?(up_file)
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
-  describe 'get_upload_file_name' do
-    subject { storage.get_upload_file_name }
+  describe 'assign_upload_file_name' do
+    subject { storage.assign_upload_file_name }
     let(:storage) { create_onedrive }
     context 'file' do
       let(:file) { 'testfile' }
-      before (:each) do
+      before(:each) do
         storage.up_file_name = file
       end
       it { is_expected.to eq file }
     end
     context 'directory' do
       let(:file) { 'testdir' }
-      before (:each) do
+      before(:each) do
         storage.up_file_name = file
         Dir.mkdir(file)
       end
       it { is_expected.to eq "#{file}.zip" }
-      after (:each) do
-        Dir.rmdir(file) if File.exists?(file)
+      after(:each) do
+        Dir.rmdir(file) if File.exist?(file)
       end
     end
   end
@@ -490,32 +509,32 @@ describe 'OneDrive' do
     let(:storage) { create_onedrive }
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
-    let(:url) { CloudDoor::OneDrive::MKDIR_FORMAT % [ CloudDoor::OneDrive::ROOT_ID ] }
-    let(:info_url) { CloudDoor::OneDrive::DIR_FORMAT % [ CloudDoor::OneDrive::ROOT_ID, access_token ] }
+    let(:url) { CloudDoor::OneDrive::MKDIR_FORMAT % CloudDoor::OneDrive::ROOT_ID }
+    let(:info_url) { CloudDoor::OneDrive::DIR_FORMAT % [CloudDoor::OneDrive::ROOT_ID, access_token] }
     context 'success' do
-      before (:each) do
+      before(:each) do
         storage.mkdir_name = 'dir'
-        WebMock.stub_request(:post, url).
-          to_return(:status => 200)
-        WebMock.stub_request(:get, info_url).to_return(:status => 200)
+        body = JSON('data' => [{'id' => 'file.1234', 'name' => 'onedrive'}])
+        WebMock.stub_request(:post, url).to_return(status: 200, body: '{}')
+        WebMock.stub_request(:get, info_url).to_return(status: 200, body: body)
       end
       it { is_expected.to be_truthy }
     end
     context 'fail' do
       context 'file name not input' do
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::DirectoryNameEmptyException) }
       end
       context 'request fail' do
-        before (:each) do
+        before(:each) do
           storage.mkdir_name = 'dir'
-          WebMock.stub_request(:post, url).to_return(:status => 404)
-          WebMock.stub_request(:get, info_url).to_return(:status => 404)
+          WebMock.stub_request(:post, url).to_return(status: 401)
+          WebMock.stub_request(:get, info_url).to_return(status: 401)
         end
-        it { is_expected.to be_truthy }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
@@ -523,24 +542,24 @@ describe 'OneDrive' do
     subject { storage.delete_file_list }
     let(:storage) { create_onedrive }
     let(:list_file) { storage.file_list.list_file }
-    before (:each) do
+    before(:each) do
       list = [{'items' => {'test' => 'file.1234'}}]
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
     it { is_expected.to be_truthy }
-    after (:each) do
-      File.delete('test') if File.exists?('test')
+    after(:each) do
+      File.delete('test') if File.exist?('test')
     end
   end
 
   describe 'file_exists?' do
     subject { storage.file_exists? }
     let(:storage) { create_onedrive }
-    let(:url) {
+    let(:url) do
       CloudDoor::OneDrive::DIR_FORMAT % [CloudDoor::OneDrive::ROOT_ID, storage.token.access_token]
-    }
+    end
     let(:list_file) { storage.file_list.list_file }
-    before (:each) do
+    before(:each) do
       list = [{'items' => {'test' => 'file.1234'}}]
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
       storage.file_name    = 'test'
@@ -548,42 +567,39 @@ describe 'OneDrive' do
     end
     context 'return true' do
       context 'file exists' do
-        before (:each) do
-          body = JSON({'data' => [{'id' => 'file.1234', 'name' => 'test'}]})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('data' => [{'id' => 'file.1234', 'name' => 'test'}])
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to be_truthy }
       end
       context 'up_file exists' do
-        before (:each) do
+        before(:each) do
           storage.file_name    = nil
           storage.up_file_name = 'test'
-          body = JSON({'data' => [{'id' => 'file.1234', 'name' => 'test'}]})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+          body = JSON('data' => [{'id' => 'file.1234', 'name' => 'test'}])
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to be_truthy }
       end
     end
     context 'return false' do
       context 'file not found' do
-        before (:each) do
-          body = JSON({'data' => [{'id' => 'file.5678', 'name' => 'test2'}]})
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+        before(:each) do
+          body = JSON('data' => [{'id' => 'file.5678', 'name' => 'test2'}])
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to be_falsey }
       end
       context 'request fail' do
-        before (:each) do
-          WebMock.stub_request(:get, url).to_return(:status => 404)
+        before(:each) do
+          WebMock.stub_request(:get, url).to_return(status: 401)
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
@@ -593,88 +609,92 @@ describe 'OneDrive' do
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
     let(:url) { CloudDoor::OneDrive::FILE_FORMAT % ['folder.5678', access_token] }
-    before (:each) do
+    before(:each) do
       list = [{'items' => {'file' => 'file.1234', 'folder' => 'folder.5678'}}]
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
     context 'return true' do
       context 'folder' do
-        let(:info) { {
-          'name'         => 'folder',
-          'id'           => 'folder.5678',
-          'type'         => 'folder',
-          'size'         => 1024,
-          'count'        => 5,
-          'created_time' => '2014-06-01 12:20:30',
-          'updated_time' => '2014-06-05 13:30:40',
-        } }
-        before (:each) do
+        let(:info) do
+          {
+            'name'         => 'folder',
+            'id'           => 'folder.5678',
+            'type'         => 'folder',
+            'size'         => 1024,
+            'count'        => 5,
+            'created_time' => '2014-06-01 12:20:30',
+            'updated_time' => '2014-06-05 13:30:40'
+          }
+        end
+        before(:each) do
           storage.file_name = 'folder'
           body = JSON(info)
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to be_truthy }
       end
     end
     context 'return false' do
-      context 'file name not input' do
-        it { is_expected.to be_falsey }
-      end
-      context 'file id not exits' do
-        before (:each) do
-          storage.file_name = 'test'
+      context 'count is 0' do
+        let(:info) do
+          {
+            'name'         => 'folder',
+            'id'           => 'folder.5678',
+            'type'         => 'folder',
+            'size'         => 1024,
+            'count'        => 0,
+            'created_time' => '2014-06-01 12:20:30',
+            'updated_time' => '2014-06-05 13:30:40'
+          }
+        end
+        before(:each) do
+          storage.file_name = 'folder'
+          body = JSON(info)
+          WebMock.stub_request(:get, url).to_return(status: 200, body: body)
         end
         it { is_expected.to be_falsey }
       end
       context 'target is file' do
-        before (:each) do
+        before(:each) do
           storage.file_name = 'file'
         end
         it { is_expected.to be_falsey }
       end
-      context 'count is 0' do
-        let(:info) { {
-          'name'         => 'folder',
-          'id'           => 'folder.5678',
-          'type'         => 'folder',
-          'size'         => 1024,
-          'count'        => 0,
-          'created_time' => '2014-06-01 12:20:30',
-          'updated_time' => '2014-06-05 13:30:40',
-        } }
-        before (:each) do
-          storage.file_name = 'folder'
-          body = JSON(info)
-          WebMock.stub_request(:get, url).
-            to_return(:status => 200, :body => body, :headers => {})
+    end
+    context 'fail' do
+      context 'file name not input' do
+        it { expect { subject }.to raise_error(CloudDoor::FileNameEmptyException) }
+      end
+      context 'file id not exits' do
+        before(:each) do
+          storage.file_name = 'test'
         end
-        it { is_expected.to be_falsey }
+        it { expect { subject }.to raise_error(CloudDoor::SetIDException) }
       end
       context 'request fail' do
-        before (:each) do
+        before(:each) do
           storage.file_name = 'folder'
-          WebMock.stub_request(:get, url).to_return(:status => 404)
+          WebMock.stub_request(:get, url).to_return(status: 401)
         end
-        it { is_expected.to be_falsey  }
+        it { expect { subject }.to raise_error(CloudDoor::UnauthorizedException) }
       end
     end
-    after (:each) do
-      File.delete(list_file) if File.exists?(list_file)
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 
-  describe 'is_file?' do
-    subject { storage.is_file? }
+  describe 'file?' do
+    subject { storage.file? }
     let(:storage) { create_onedrive }
     context 'file' do
-      before (:each) do
+      before(:each) do
         storage.file_id = 'file.1234'
       end
       it { is_expected.to be_truthy }
     end
     context 'folder' do
-      before (:each) do
+      before(:each) do
         storage.file_id = 'folder.1234'
       end
       it { is_expected.to be_falsey }
@@ -682,7 +702,7 @@ describe 'OneDrive' do
   end
 
   describe 'get_type_from_id' do
-    subject { CloudDoor::OneDrive::get_type_from_id(target) }
+    subject { CloudDoor::OneDrive.get_type_from_id(target) }
     context 'file' do
       let(:target) { 'file.1234' }
       it { is_expected.to eq 'file' }
@@ -699,64 +719,64 @@ describe 'OneDrive' do
     context 'success' do
       let(:code) { '5678' }
       let(:url) { CloudDoor::OneDrive::TOKEN_URL + "?code=#{code}" }
-      let(:body) { JSON({'access_token' => 'mock'}) }
-      before (:each) do
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          with(
-            :body => {
+      let(:body) { JSON('access_token' => 'mock') }
+      before(:each) do
+        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+          .with(
+            body: {
               'client_id'     => storage.config.client_id,
               'client_secret' => storage.config.client_secret,
               'redirect_uri'  => storage.config.redirect_url,
               'code'          => code,
               'grant_type'    => 'authorization_code'
             },
-            :headers => {
-              'Content-Type' => 'application/x-www-form-urlencoded',
+            headers: {
+              'Content-Type' => 'application/x-www-form-urlencoded'
             }
-          ).
-          to_return(:status => 200, :body => body, :headers => {})
+          )
+          .to_return(status: 200, body: body)
       end
       it { is_expected.to eq JSON.parse(body) }
     end
     context 'fail' do
       let(:url) { 'https://login.live.com/oauth20_desktop.srf' }
-      it { is_expected.to be_nil }
+      it { expect { subject }.to raise_error(CloudDoor::AccessCodeNotIncludeException) }
     end
   end
 
   describe 'request_refresh_token' do
     subject { storage.send(:request_refresh_token) }
-    let(:storage) {
+    let(:storage) do
       storage = create_onedrive
       storage.token.refresh_token = 'refresh'
       storage
-    }
-    let(:mock_body) {
+    end
+    let(:mock_body) do
       {
         'client_id'     => storage.config.client_id,
         'client_secret' => storage.config.client_secret,
         'redirect_uri'  => storage.config.redirect_url,
         'grant_type'    => 'refresh_token',
-        'refresh_token' => storage.token.refresh_token,
+        'refresh_token' => storage.token.refresh_token
       }
-    }
+    end
     let(:mock_header) { {'Content-Type' => 'application/x-www-form-urlencoded'} }
     context 'success' do
-      let(:body) { JSON({'access_token' => 'mock'}) }
-      before (:each) do
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          with(:body => mock_body, :headers => mock_header).
-          to_return(:status => 200, :body => body, :headers => {})
+      let(:body) { JSON('access_token' => 'mock') }
+      before(:each) do
+        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+          .with(body: mock_body, headers: mock_header)
+          .to_return(status: 200, body: body)
       end
       it { is_expected.to eq JSON.parse(body) }
     end
     context 'fail' do
-      before (:each) do
-        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL).
-          with(:body => mock_body, :headers => mock_header).
-          to_return(:status => 404)
+      before(:each) do
+        WebMock.stub_request(:post, CloudDoor::OneDrive::TOKEN_URL)
+          .with(body: mock_body, headers: mock_header)
+          .to_return(status: 401)
       end
-      it { is_expected.to be_nil }
+      it { expect { subject }.to raise_error(RestClient::Unauthorized) }
     end
   end
 
@@ -765,30 +785,32 @@ describe 'OneDrive' do
     let(:storage) { create_onedrive }
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
-    let(:url) { CloudDoor::OneDrive::MKDIR_FORMAT % [ CloudDoor::OneDrive::ROOT_ID ] }
-    let(:mock_body) { JSON({'name' => storage.mkdir_name}) }
-    let(:mock_header) { {
-      'Authorization' => "Bearer",
-      'Content-Type'  => 'application/json'
-    } }
+    let(:url) { CloudDoor::OneDrive::MKDIR_FORMAT % CloudDoor::OneDrive::ROOT_ID }
+    let(:mock_body) { JSON('name' => storage.mkdir_name) }
+    let(:mock_header) do
+      {
+        'Authorization' => 'Bearer',
+        'Content-Type'  => 'application/json'
+      }
+    end
     context 'success' do
-      let(:body) { JSON({'result' => 'success'}) }
-      before (:each) do
+      let(:body) { JSON('result' => 'success') }
+      before(:each) do
         storage.mkdir_name = 'dir'
-        WebMock.stub_request(:post, url).
-          with(:body => mock_body, :headers => mock_header).
-          to_return(:status => 200, :body => body, :header => {})
+        WebMock.stub_request(:post, url)
+          .with(body: mock_body, headers: mock_header)
+          .to_return(status: 200, body: body)
       end
       it { is_expected.to eq JSON.parse(body) }
     end
     context 'fail' do
-      before (:each) do
+      before(:each) do
         storage.mkdir_name = 'dir'
-        WebMock.stub_request(:post, url).
-          with(:body => mock_body, :headers => mock_header).
-          to_return(:status => 404)
+        WebMock.stub_request(:post, url)
+          .with(body: mock_body, headers: mock_header)
+          .to_return(status: 401)
       end
-      it { is_expected.to be_falsey }
+      it { expect { subject }.to raise_error(RestClient::Unauthorized) }
     end
   end
 end
