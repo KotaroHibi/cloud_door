@@ -10,6 +10,7 @@ require 'cloud_door/account'
 require 'cloud_door/cloud_config'
 require 'cloud_door/token'
 require 'cloud_door/file_list'
+require 'cloud_door/exceptions'
 
 module CloudDoor
   class OneDrive
