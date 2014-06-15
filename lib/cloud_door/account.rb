@@ -6,7 +6,7 @@ class Account < CloudYaml
 
   ACCOUNT_ITEMS = [
     'login_account',
-    'login_password',
+    'login_password'
   ]
 
   def initialize(storage)
@@ -16,5 +16,9 @@ class Account < CloudYaml
     @login_account  = ''
     @login_password = ''
     load_yaml
+  end
+
+  def isset_account?
+    !(login_account.empty? || login_password.empty?)
   end
 end

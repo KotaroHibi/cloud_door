@@ -7,7 +7,7 @@ class CloudConfig < CloudYaml
   CONFIG_ITEMS = [
     'client_id',
     'client_secret',
-    'redirect_url',
+    'redirect_url'
   ]
 
   def initialize(storage)
@@ -20,10 +20,10 @@ class CloudConfig < CloudYaml
     load_yaml
   end
 
-  def is_init?
+  def init?
     CONFIG_ITEMS.each do |item|
       val = instance_variable_get("@#{item}")
-      return false if (val.nil? || val.empty?)
+      return false if val.nil? || val.empty?
     end
     true
   end
