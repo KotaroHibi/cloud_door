@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'commander/import'
+# require 'cloud_door'
+# require '.cloud_door/cloud_storage'
+# require '.cloud_door/dropbox'
+require './lib/cloud_door'
+require './lib/cloud_door/cloud_storage'
+require './lib/cloud_door/dropbox'
+require './lib/cloud_door/console'
+require 'pp'
+
+program :version, '0.0.1'
+program :description, 'access dropbox from CLI'
+
+command :config do |c|
+  c.syntax      = 'dropbox config'
+  c.summary     = 'configure the dropbox connection'
+  c.description = 'configure the dropbox connection'
+  c.example 'description', 'dropbox config'
+  c.option '-l'
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.config(options.l)
+  end
+end
+
+command :account do |c|
+  c.syntax      = 'dropbox account'
+  c.summary     = 'set account for the dropbox connection'
+  c.description = 'set account for the dropbox connection'
+  c.example 'description', 'dropbox accout'
+  # c.option '-b STR', String, 'Example of string'
+  c.option '-l'
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.account(options.l)
+  end
+end
+
+command :auth do |c|
+  c.syntax      = 'dropbox auth'
+  c.summary     = 'authentication for dropbox'
+  c.description = 'authentication for dropbox'
+  c.example 'description', 'dropbox auth'
+  c.option '-d'
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.auth(options.d)
+  end
+end
+
+command :ls do |c|
+  c.syntax      = 'dropbox list [file_name]'
+  c.summary     = 'list dropbox files'
+  c.description = 'list dropbox files'
+  c.example 'description', "dropbox list 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.ls(args[0])
+  end
+end
+
+command :cd do |c|
+  c.syntax      = 'dropbox cd [file_name]'
+  c.summary     = 'change directory on dropbox'
+  c.description = 'change directory on dropbox'
+  c.example 'description', "dropbox cd 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.cd(args[0])
+  end
+end
+
+command :info do |c|
+  c.syntax      = 'dropbox info [file_name]'
+  c.summary     = 'show dropbox file information'
+  c.description = 'show dropbox file information'
+  c.example 'description', "dropbox info 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.info(args[0])
+  end
+end
+
+command :pwd do |c|
+  c.syntax      = 'dropbox pwd'
+  c.summary     = 'show current directory'
+  c.description = 'show current directory'
+  c.example 'description', "dropbox pwd"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.pwd
+  end
+end
+
+command :download do |c|
+  c.syntax      = 'dropbox download [file_name]'
+  c.summary     = 'download file from dropbox'
+  c.description = 'download file from dropbox'
+  c.example 'description', "dropbox download 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.download(args[0])
+  end
+end
+
+command :upload do |c|
+  c.syntax      = 'dropbox upload [file_name]'
+  c.summary     = 'upload file to dropbox'
+  c.description = 'upload file to dropbox'
+  c.example 'description', "dropbox upload 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.upload(args[0])
+  end
+end
+
+command :rm do |c|
+  c.syntax      = 'dropbox delete [file_name]'
+  c.summary     = 'delete file on dropbox'
+  c.description = 'delete file on dropbox'
+  c.example 'description', "dropbox delete 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.rm(args[0])
+  end
+end
+
+command :mkdir do |c|
+  c.syntax      = 'dropbox mkdir [folder_name]'
+  c.summary     = 'make directory on dropbox'
+  c.description = 'make directory on dropbox'
+  c.example 'description', "dropbox mkdir 'folder'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::Dropbox)
+    console.mkdir(args[0])
+  end
+end

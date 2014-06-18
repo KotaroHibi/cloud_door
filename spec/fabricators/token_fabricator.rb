@@ -1,4 +1,5 @@
-Fabricator(:token) do
+Fabricator(:token, class_name: :'CloudDoor::Token') do
+  initialize_with { CloudDoor::Token.new(token_file) }
   token_file 'token'
   token_type 'bearer'
   expires_in 3600

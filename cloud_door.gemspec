@@ -26,6 +26,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubyzip'
   spec.add_development_dependency 'watir'
   spec.add_development_dependency 'watir-webdriver'
+  spec.add_development_dependency 'dropbox-sdk'
   # test libraries
   spec.add_development_dependency 'rspec', '~> 2.99.0'
   spec.add_development_dependency 'webmock'

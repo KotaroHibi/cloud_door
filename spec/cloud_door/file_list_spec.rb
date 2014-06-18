@@ -1,8 +1,7 @@
 require 'spec_helper'
 
 def create_file_list
-  file_list = FileList.new
-  file_list.list_file = '.testlist'
+  file_list = CloudDoor::FileList.new('test_list')
   file_list
 end
 
@@ -10,9 +9,10 @@ describe 'FileList' do
   describe 'load_list' do
     subject { file_list.load_list }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
-      [{'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}]
+      items = {'id' => 'folder.1234', 'type' => 'folder'}
+      [{'id' => 'top', 'name' => 'top', 'items' => items}]
     end
     context 'list file not exists' do
       it { is_expected.to be_truthy }
@@ -39,7 +39,7 @@ describe 'FileList' do
       it { is_expected.to be_falsey }
       it do
         subject
-        expect(file_list.list).to eq []
+        expect(file_list.list).to eq nil
       end
     end
     after(:each) do
@@ -50,14 +50,14 @@ describe 'FileList' do
   describe 'add_list_top' do
     subject { file_list.add_list_top(items) }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     before(:each) do
       File.delete(list_file) if File.exist?(list_file)
     end
     context 'success' do
-      let(:items) { {'folder' => 'folder.1234'} }
+      let(:items) { {'folder' => {'id' => 'folder.1234', 'type' => 'folder'}} }
       let(:added_list) do
-        [{'id' => 'top', 'name' => 'top', 'items' => {'folder' => 'folder.1234'}}]
+        [{'id' => 'top', 'name' => 'top', 'items' => items}]
       end
       it { is_expected.to be_truthy }
       it do
@@ -84,21 +84,22 @@ describe 'FileList' do
   describe 'add_list' do
     subject { file_list.add_list(items, file_id, file_name) }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
-      [{'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}]
+      [{'id' => 'top', 'name' => 'top', 'items' => top_items}]
     end
-    let(:file_id) { 'folder.5678' }
+    let(:file_id) { 'folder.1234' }
     let(:file_name) { 'folder1' }
-    let(:items) { {'test2' => 'file.5678'} }
+    let(:items) { {'test2' => {'id' => 'file.5678', 'type' => 'file'}} }
+    let(:top_items) { {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}} }
     before(:each) do
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
     context 'success' do
       let(:added_list) do
         [
-          {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-          {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}}
+          {'id' => 'top', 'name' => 'top', 'items' => top_items},
+          {'id' => file_id, 'name' => file_name, 'items' => items}
         ]
       end
       it { is_expected.to be_truthy }
@@ -135,7 +136,7 @@ describe 'FileList' do
       end
       context 'list file is not array' do
         let(:list) do
-          {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}
+          {'id' => 'top', 'name' => 'top', 'items' => top_items}
         end
         it { is_expected.to be_falsey }
       end
@@ -148,24 +149,29 @@ describe 'FileList' do
   describe 'update_list' do
     subject { file_list.update_list(items) }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
+      items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+      items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
+      items3 = {'file3' => {'id' => 'file.3456', 'type' => 'file'}}
       [
-        {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-        {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}},
-        {'id' => 'folder.3456', 'name' => 'folder2', 'items' => {'test3' => 'file.3456'}}
+        {'id' => 'top', 'name' => 'top', 'items' => items1},
+        {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+        {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items3}
       ]
     end
-    let(:items) { {'test4' => 'file.7890'} }
+    let(:items) { {'file4' => {'id' => 'file.7890', 'type' => 'file'}} }
     before(:each) do
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
     context 'success' do
       let(:updated_list) do
+        items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+        items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
         [
-          {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-          {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}},
-          {'id' => 'folder.3456', 'name' => 'folder2', 'items' => {'test4' => 'file.7890'}}
+          {'id' => 'top', 'name' => 'top', 'items' => items1},
+          {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+          {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items}
         ]
       end
       it { is_expected.to be_truthy }
@@ -193,12 +199,15 @@ describe 'FileList' do
   describe 'remove_list' do
     subject { file_list.remove_list(back) }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
+      items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+      items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
+      items3 = {'file3' => {'id' => 'file.3456', 'type' => 'file'}}
       [
-        {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-        {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}},
-        {'id' => 'folder.3456', 'name' => 'folder2', 'items' => {'test3' => 'file.3456'}}
+        {'id' => 'top', 'name' => 'top', 'items' => items1},
+        {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+        {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items3}
       ]
     end
     before(:each) do
@@ -231,7 +240,8 @@ describe 'FileList' do
       end
       context 'list file is not array' do
         let(:list) do
-          {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}
+          items = {'test' => {'id' => 'file.1234', 'type' => 'file'}}
+          {'id' => 'top', 'name' => 'top', 'items' => items}
         end
         let(:back) { 1 }
         it { is_expected.to be_falsey }
@@ -245,9 +255,10 @@ describe 'FileList' do
   describe 'delete_list' do
     subject { file_list.delete_file }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
-      [{'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}]
+      items = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+      [{'id' => 'top', 'name' => 'top', 'items' => items}]
     end
     context 'file not exists' do
       it { is_expected.to be_truthy }
@@ -274,18 +285,21 @@ describe 'FileList' do
   describe 'pull_parent_id' do
     subject { file_list.pull_parent_id }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
+      items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+      items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
+      items3 = {'file3' => {'id' => 'file.3456', 'type' => 'file'}}
       [
-        {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-        {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}},
-        {'id' => 'folder.3456', 'name' => 'folder2', 'items' => {'test3' => 'file.3456'}}
+        {'id' => 'top', 'name' => 'top', 'items' => items1},
+        {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+        {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items3}
       ]
     end
     before(:each) do
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
-    it { is_expected.to eq 'folder.3456' }
+    it { is_expected.to eq 'folder.5678' }
     after(:each) do
       File.delete(list_file) if File.exist?(list_file)
     end
@@ -294,22 +308,26 @@ describe 'FileList' do
   describe 'pull_current_dir' do
     subject { file_list.pull_current_dir }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     before(:each) do
       open(list_file, 'wb') { |file| file << Marshal.dump(list) }
     end
     context 'top' do
       let(:list) do
-        [{'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}]
+        items = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+        [{'id' => 'top', 'name' => 'top', 'items' => items}]
       end
       it { is_expected.to eq '/top' }
     end
     context 'directory' do
       let(:list) do
+        items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+        items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
+        items3 = {'file3' => {'id' => 'file.3456', 'type' => 'file'}}
         [
-          {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-          {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}},
-          {'id' => 'folder.3456', 'name' => 'folder2', 'items' => {'test3' => 'file.3456'}}
+          {'id' => 'top', 'name' => 'top', 'items' => items1},
+          {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+          {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items3}
         ]
       end
       it { is_expected.to eq '/top/folder1/folder2' }
@@ -319,15 +337,56 @@ describe 'FileList' do
     end
   end
 
+  describe 'pull_file_properties' do
+    subject { file_list.pull_file_properties(file_name) }
+    let(:file_list) { create_file_list }
+    let(:list_file) { './data/test_list' }
+    let(:file_name) { 'file3' }
+    let(:list) do
+      items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+      items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
+      items3 = {'file3' => {'id' => 'file.3456', 'type' => 'file'}}
+      [
+        {'id' => 'top', 'name' => 'top', 'items' => items1},
+        {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+        {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items3}
+      ]
+    end
+    before(:each) do
+      open(list_file, 'wb') { |file| file << Marshal.dump(list) }
+    end
+    context 'target found' do
+      it { is_expected.to eq({'id' => 'file.3456', 'type' => 'file'}) }
+    end
+    context 'target not found' do
+      let(:file_name) { 'file4' }
+      it { is_expected.to be_falsey }
+    end
+    context 'list is empty' do
+      let(:list) { [] }
+      it { is_expected.to be_falsey }
+    end
+    context 'items is empty' do
+      let(:list) { [{'id' => 'top', 'name' => 'top', 'items' => {}}] }
+      it { is_expected.to be_falsey }
+    end
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
+    end
+  end
+
   describe 'convert_name_to_id' do
     subject { file_list.convert_name_to_id(mode, file_name) }
     let(:file_list) { create_file_list }
-    let(:list_file) { '.testlist' }
+    let(:list_file) { './data/test_list' }
     let(:list) do
+      items1 = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+      items2 = {'folder2' => {'id' => 'folder.5678', 'type' => 'folder'}}
+      items3 = {'file3' => {'id' => 'file.3456', 'type' => 'file'}}
       [
-        {'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}},
-        {'id' => 'folder.5678', 'name' => 'folder1', 'items' => {'test2' => 'file.5678'}},
-        {'id' => 'folder.3456', 'name' => 'folder2', 'items' => {'test3' => 'file.3456'}}
+        {'id' => 'top', 'name' => 'top', 'items' => items1},
+        {'id' => 'folder.1234', 'name' => 'folder1', 'items' => items2},
+        {'id' => 'folder.5678', 'name' => 'folder2', 'items' => items3}
       ]
     end
     before(:each) do
@@ -338,12 +397,13 @@ describe 'FileList' do
       let(:file_name) { nil }
       context 'top' do
         let(:list) do
-          [{'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}]
+          items = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+          [{'id' => 'top', 'name' => 'top', 'items' => items}]
         end
         it { is_expected.to be_nil }
       end
       context 'directory' do
-        it { is_expected.to eq 'folder.3456' }
+        it { is_expected.to eq 'folder.5678' }
       end
     end
     context 'mode == parent' do
@@ -351,30 +411,28 @@ describe 'FileList' do
       context 'top' do
         let(:file_name) { '../' }
         let(:list) do
-          [{'id' => 'top', 'name' => 'top', 'items' => {'test' => 'file.1234'}}]
+          items = {'folder1' => {'id' => 'folder.1234', 'type' => 'folder'}}
+          [{'id' => 'top', 'name' => 'top', 'items' => items}]
         end
         it { is_expected.to be_falsey }
       end
       context 'back to folder' do
         let(:file_name) { '../' }
-        it { is_expected.to eq 'folder.5678' }
+        it { is_expected.to eq 'folder.1234' }
       end
       context 'back to top' do
         let(:file_name) { '../../' }
         it { is_expected.to be_nil }
       end
     end
-    after(:each) do
-      File.delete(list_file) if File.exist?(list_file)
-    end
     context 'mode == target' do
       let(:mode) { 'target' }
-      let(:file_name) { 'test3' }
+      let(:file_name) { 'file3' }
       context 'target found' do
         it { is_expected.to eq 'file.3456' }
       end
       context 'target not found' do
-        let(:file_name) { 'test4' }
+        let(:file_name) { 'file4' }
         it { is_expected.to be_falsey }
       end
       context 'list is empty' do
@@ -385,6 +443,9 @@ describe 'FileList' do
         let(:list) { [{'id' => 'top', 'name' => 'top', 'items' => {}}] }
         it { is_expected.to be_falsey }
       end
+    end
+    after(:each) do
+      File.delete(list_file) if File.exist?(list_file)
     end
   end
 end
