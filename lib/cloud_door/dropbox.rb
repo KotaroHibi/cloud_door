@@ -1,6 +1,5 @@
 require 'dropbox_sdk'
-# require 'cloud_door/cloud_storage'
-require './lib/cloud_door/cloud_storage'
+require 'cloud_door/cloud_storage'
 
 module CloudDoor
   class Dropbox < CloudStorage
@@ -23,17 +22,17 @@ module CloudDoor
     STORAGE_NAME    = 'Dropbox'
 
     def initialize
-      @config    = CloudConfig.new('dropbox')
-      @account   = Account.new('dropbox')
-      @token     = Token.new('dropbox_token')
-      @file_list = FileList.new('dropbox_list')
-      @file_id   = nil
-      CloudStorage.const_set(:ROOT_ID, ROOT_ID)
-      CloudStorage.const_set(:STORAGE_NAME, STORAGE_NAME)
+      @config       = CloudConfig.new('dropbox')
+      @account      = Account.new('dropbox')
+      @token        = Token.new('dropbox_token')
+      @file_list    = FileList.new('dropbox_list')
+      @file_id      = nil
+      @root_id      = ROOT_ID
+      @storage_name = STORAGE_NAME
     end
 
-    def load_token
-      @token = Token.load_token('dropbox_token')
+    def load_token(token_file = 'dropbox_token')
+      @token = Token.load_token(token_file)
     end
 
     def login
@@ -64,8 +63,7 @@ module CloudDoor
 
     def request_file
       client = DropboxClient.new(@token.access_token)
-      info = client.metadata(@file_id)
-      format_property(info)
+      client.metadata(@file_id)
     end
 
     def request_download
@@ -76,9 +74,9 @@ module CloudDoor
     end
 
     def request_upload(file_path)
-      client   = DropboxClient.new(@token.access_token)
+      client = DropboxClient.new(@token.access_token)
       if @parent_id == ROOT_ID
-        path = @parent_id + file_path
+        to_path = @parent_id + file_path
       else
         to_path = "#{@parent_id}/#{file_path}"
       end
@@ -135,7 +133,8 @@ module CloudDoor
     end
 
     def login_browser(auth_url)
-      browser = Watir::Browser.new :phantomjs
+      # browser = Watir::Browser.new :phantomjs
+      browser = Watir::Browser.new :firefox
       # input account
       browser.goto(auth_url)
       browser.wait

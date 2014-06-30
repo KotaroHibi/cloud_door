@@ -34,6 +34,7 @@ module CloudDoor
       begin
         all_config[@storage] = config
         open(@file, 'wb') { |f| YAML.dump(all_config, f) }
+        load_yaml
         true
       rescue
         false

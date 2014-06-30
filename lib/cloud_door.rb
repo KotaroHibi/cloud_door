@@ -1,34 +1,22 @@
-# require 'cloud_door/account'
-# require 'cloud_door/cloud_config'
-# require 'cloud_door/cloud_storage'
-# require 'cloud_door/cloud_yaml'
-# require 'cloud_door/console'
-# require 'cloud_door/dropbox'
-# require 'cloud_door/exceptions'
-# require 'cloud_door/file_list'
-# require 'cloud_door/onedrive'
-# require 'cloud_door/onedrive_api'
-# require 'cloud_door/token'
-# require 'cloud_door/version'
-require './lib/cloud_door/account'
-require './lib/cloud_door/cloud_config'
-require './lib/cloud_door/cloud_storage'
-require './lib/cloud_door/cloud_yaml'
-require './lib/cloud_door/console'
-require './lib/cloud_door/dropbox'
-require './lib/cloud_door/exceptions'
-require './lib/cloud_door/file_list'
-require './lib/cloud_door/onedrive'
-require './lib/cloud_door/onedrive_api'
-require './lib/cloud_door/token'
-require './lib/cloud_door/version'
+require 'cloud_door/account'
+require 'cloud_door/cloud_config'
+require 'cloud_door/cloud_storage'
+require 'cloud_door/cloud_yaml'
+require 'cloud_door/console'
+require 'cloud_door/dropbox'
+require 'cloud_door/exceptions'
+require 'cloud_door/file_list'
+require 'cloud_door/onedrive'
+require 'cloud_door/onedrive_api'
+require 'cloud_door/token'
+require 'cloud_door/version'
 
 module CloudDoor
   class CloudDoor
-    attr_reader :storage
+    attr_accessor :storage
 
-    def initialize(storage)
-      @storage = storage.new
+    def initialize(storage_klass)
+      @storage = storage_klass.new
     end
 
     def set_file_name(file_name)
@@ -47,7 +35,7 @@ module CloudDoor
       @storage.login
     end
 
-    def load_token()
+    def load_token(token_file = nil)
       @storage.load_token
     end
 

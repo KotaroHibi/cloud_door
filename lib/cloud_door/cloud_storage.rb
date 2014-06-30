@@ -3,30 +3,47 @@ require 'open-uri'
 require 'date'
 require 'zip'
 require 'watir-webdriver'
-# require 'cloud_door/version'
-# require 'cloud_door/account'
-# require 'cloud_door/cloud_config'
-# require 'cloud_door/token'
-# require 'cloud_door/file_list'
-# require 'cloud_door/exceptions'
-# require 'cloud_door/version'
-require './lib/cloud_door/account'
-require './lib/cloud_door/cloud_config'
-require './lib/cloud_door/token'
-require './lib/cloud_door/file_list'
-require './lib/cloud_door/exceptions'
-require './lib/cloud_door/version'
-require 'pp'
+require 'cloud_door/version'
+require 'cloud_door/account'
+require 'cloud_door/cloud_config'
+require 'cloud_door/token'
+require 'cloud_door/file_list'
+require 'cloud_door/exceptions'
+require 'cloud_door/version'
 
 module CloudDoor
   class CloudStorage
+    attr_accessor :root_id, :storage_name
     # regular expression pattern of parent directory
     PARENT_DIR_PAT = /..\//
     PICK_METHODS = %w(request_user request_dir request_file)
 
+    # there is abstract method. should define there method
+    ABSTRACT_METHODS = %w(
+      load_token
+      login
+      request_user
+      request_dir
+      request_file
+      request_download
+      request_upload
+      request_delete
+      request_mkdir
+      pull_files
+      format_property
+    )
+
     def initialize
       # should make inherited subclass
       raise AbstractClassException
+    end
+
+    def method_missing(method, *args)
+      if ABSTRACT_METHODS.include?(method.to_s)
+        raise AbstractMethodException, "'#{method.to_s}' is abstract method. please define on subclass."
+      else
+        super
+      end
     end
 
     def set_file_name(file_name)
@@ -42,7 +59,7 @@ module CloudDoor
     end
 
     def show_storage_name
-      STORAGE_NAME
+      @storage_name
     end
 
     def show_configuration
@@ -104,6 +121,7 @@ module CloudDoor
         raise FileNotExistsException, "'#{@file_name}' is not exists on cloud."
       end
       info = request_file
+      raise NoDataException if info.nil? || !info.is_a?(Hash)
       format_property(info)
     rescue => e
       handle_exception(e)
@@ -220,17 +238,8 @@ module CloudDoor
       return false if @file_name.nil? || @file_name.empty?
       return false if @file_name =~ PARENT_DIR_PAT
       properties = @file_list.pull_file_properties(@file_name)
+      return false unless properties
       properties['type'] == 'file' ? true : false
-    end
-
-    def load_token
-      # should override
-      raise AbstractMethodException
-    end
-
-    def login
-      # should override
-      raise AbstractMethodException
     end
 
     private
@@ -244,14 +253,14 @@ module CloudDoor
         mode = 'target'
       end
       file_id = @file_list.convert_name_to_id(mode, @file_name)
-      return false if (file_id == false)
+      return false if file_id.is_a?(FalseClass)
       @file_id = file_id
       true
     end
 
     def pull_parent_id
       parent_id = @file_list.pull_parent_id
-      parent_id || ROOT_ID
+      parent_id || @root_id
     end
 
     def update_file_list
@@ -273,51 +282,6 @@ module CloudDoor
 
     def handle_exception(e)
       raise
-    end
-
-    def request_user
-      # should override
-      raise AbstractMethodException
-    end
-
-    def request_dir
-      # should override
-      raise AbstractMethodException
-    end
-
-    def request_file
-      # should override
-      raise AbstractMethodException
-    end
-
-    def request_download
-      # should override
-      raise AbstractMethodException
-    end
-
-    def request_upload(file_path)
-      # should override
-      raise AbstractMethodException
-    end
-
-    def request_delete
-      # should override
-      raise AbstractMethodException
-    end
-
-    def request_mkdir
-      # should override
-      raise AbstractMethodException
-    end
-
-    def pull_files
-      # should override
-      raise AbstractMethodException
-    end
-
-    def format_property(info)
-      # should override
-      raise AbstractMethodException
     end
   end
 end

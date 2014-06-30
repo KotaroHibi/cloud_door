@@ -1,7 +1,5 @@
-# require 'cloud_door/onedrive_api'
-# require 'cloud_door/cloud_storage'
-require './lib/cloud_door/onedrive_api'
-require './lib/cloud_door/cloud_storage'
+require 'cloud_door/onedrive_api'
+require 'cloud_door/cloud_storage'
 
 module CloudDoor
   class OneDrive < CloudStorage
@@ -22,13 +20,27 @@ module CloudDoor
     STORAGE_NAME = 'OneDrive'
 
     def initialize
-      @config    = CloudConfig.new('onedrive')
-      @account   = Account.new('onedrive')
-      @token     = Token.new('onedrive_token')
-      @file_list = FileList.new('onedrive_list')
-      @file_id   = nil
-      CloudStorage.const_set(:ROOT_ID, ROOT_ID)
-      CloudStorage.const_set(:STORAGE_NAME, STORAGE_NAME)
+      @config       = CloudConfig.new('onedrive')
+      @account      = Account.new('onedrive')
+      @token        = Token.new('onedrive_token')
+      @file_list    = FileList.new('onedrive_list')
+      @file_id      = nil
+      @root_id      = ROOT_ID
+      @storage_name = STORAGE_NAME
+    end
+
+    def load_token(token_file = 'onedrive_token')
+      @token = Token.load_token(token_file)
+    end
+
+    def refresh_token
+      raise TokenClassException unless @token.is_a?(Token)
+      info = request_refresh_token
+      raise NoDataException if info.nil?
+      @token.set_attributes(info)
+      @token.write_token
+    rescue => e
+      handle_exception(e)
     end
 
    def login
@@ -37,20 +49,6 @@ module CloudDoor
       raise NoDataException if info.nil?
       reset_token(info)
       true
-    rescue => e
-      handle_exception(e)
-    end
-
-    def load_token
-      @token = Token.load_token('onedrive_token')
-    end
-
-    def refresh_token
-      info = request_refresh_token
-      raise NoDataException if info.nil?
-      raise TokenClassException unless @token.is_a?(Token)
-      @token.set_attributes(info)
-      @token.write_token
     rescue => e
       handle_exception(e)
     end
@@ -105,7 +103,7 @@ module CloudDoor
     end
 
     def request_upload(file_path)
-      api     = OneDriveApi.new(@token.access_token)
+      api = OneDriveApi.new(@token.access_token)
       api.request_upload(file_path, @parent_id)
     end
 

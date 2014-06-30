@@ -136,7 +136,7 @@ module CloudDoor
 
     def convert_target_id(file_name)
       properties = pull_file_properties(file_name)
-      return nil unless properties
+      return false unless properties
       properties['id']
     end
   end

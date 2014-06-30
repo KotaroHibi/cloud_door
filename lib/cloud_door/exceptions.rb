@@ -149,12 +149,5 @@ module CloudDoor
   end
 
   class AbstractMethodException < StandardError
-    def message
-      'this method is abstract method. please override on subclass.'
-    end
-
-    def to_s
-      message
-    end
   end
 end
