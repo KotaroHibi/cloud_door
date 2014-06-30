@@ -1,6 +1,7 @@
 require 'spec_helper'
 
 describe 'Account' do
+  let(:account_file) { './data/test.yml' }
   describe 'isset_account?' do
     subject { account.isset_account? }
     let(:account) { Fabricate.build(:account, storage: 'onedrive', file: account_file) }
@@ -27,7 +28,6 @@ describe 'Account' do
     end
   end
 
-  let(:account_file) { '.test.yml' }
   describe 'load_yaml' do
     before(:all) do
       accounts = {
@@ -40,7 +40,7 @@ describe 'Account' do
           'login_password' => 'dropbox'
         }
       }
-      open('.test.yml', 'wb') { |file| YAML.dump(accounts, file) }
+      open('./data/test.yml', 'wb') { |file| YAML.dump(accounts, file) }
     end
     before(:each) { account.load_yaml }
     context 'onedrive' do
@@ -54,7 +54,7 @@ describe 'Account' do
       it { expect(account.login_password).to eq 'dropbox' }
     end
     after(:all) do
-      File.delete('.test.yml') if File.exist?('.test.yml')
+      File.delete('./data/test.yml') if File.exist?('./data/test.yml')
     end
   end
 

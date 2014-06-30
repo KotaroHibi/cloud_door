@@ -107,4 +107,47 @@ module CloudDoor
       message
     end
   end
+
+  class UploadFailedException < StandardError
+    def message
+      'upload file to storage failed.'
+    end
+
+    def to_s
+      message
+    end
+  end
+
+  class DeleteFailedException < StandardError
+    def message
+      'delete file from storage failed.'
+    end
+
+    def to_s
+      message
+    end
+  end
+
+  class MkdirFailedException < StandardError
+    def message
+      'make directory on storage failed.'
+    end
+
+    def to_s
+      message
+    end
+  end
+
+  class AbstractClassException < StandardError
+    def message
+      'this class is abstract class. please make inherited subclass.'
+    end
+
+    def to_s
+      message
+    end
+  end
+
+  class AbstractMethodException < StandardError
+  end
 end

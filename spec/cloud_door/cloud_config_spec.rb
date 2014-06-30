@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe 'CloudConfig' do
   describe 'load_yaml' do
-    let(:config_file) { '.test.yml' }
+    let(:config_file) { './data/test.yml' }
     before(:all) do
       configs = {
         'onedrive' => {
@@ -16,7 +16,7 @@ describe 'CloudConfig' do
           'redirect_url'  => 'dropbox'
         }
       }
-      open('.test.yml', 'wb') { |file| YAML.dump(configs, file) }
+      open('./data/test.yml', 'wb') { |file| YAML.dump(configs, file) }
     end
     before(:each) { config.load_yaml }
     context 'onedrive' do
@@ -32,12 +32,12 @@ describe 'CloudConfig' do
       it { expect(config.redirect_url).to eq 'dropbox' }
     end
     after(:all) do
-      File.delete('.test.yml') if File.exist?('.test.yml')
+      File.delete('./data/test.yml') if File.exist?('./data/test.yml')
     end
   end
 
   describe 'update_yaml' do
-    let(:config_file) { '.test.yml' }
+    let(:config_file) { './data/test.yml' }
     before(:each) do
       File.delete(config_file) if File.exist?(config_file)
       account.update_yaml(update_params)

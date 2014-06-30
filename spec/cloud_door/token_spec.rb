@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe 'Token' do
   describe 'set_attributes' do
-    let(:token) { Token.new }
+    let(:token) { CloudDoor::Token.new('test_token') }
     let(:attributes) do
       {
         'token_type'    => 'bearer',
@@ -28,33 +28,35 @@ describe 'Token' do
 
   describe 'write_token' do
     subject { token.write_token }
+    let(:token) { Fabricate.build(:token, token_file: './data/test_token') }
     before(:all) do
-      File.delete('.test') if File.exist?('.test')
+      File.delete('./data/test_token') if File.exist?('./data/test_token')
     end
     context 'success' do
-      let(:token) { Fabricate.build(:token, token_file: '.test') }
       it { is_expected.to be_truthy }
     end
     context 'fail' do
-      let(:token) { Fabricate.build(:token, token_file: nil) }
+      before(:each) do
+        token.token_file = nil
+      end
       it { is_expected.to be_falsey }
     end
     after(:all) do
-      File.delete('.test') if File.exist?('.test')
+      File.delete('../data/test_token') if File.exist?('./data/test_token')
     end
   end
 
   describe 'load_token' do
-    subject { Token.load_token(token_file) }
-    let(:token_file) { '.test' }
+    subject { CloudDoor::Token.load_token('test_token') }
+    let(:token_file) { './data/test_token' }
     context 'success' do
-      let(:token_org) { Fabricate.build(:token) }
+      let(:token_org) { Fabricate.build(:token, token_file: 'test_token') }
       before(:each) do
         open(token_file, 'wb') { |file| file << Marshal.dump(token_org) }
-        @token = Token.load_token(token_file)
+        @token = CloudDoor::Token.load_token('test_token')
       end
       it { is_expected.to be_truthy }
-      it { expect(@token.is_a?(Token)).to be_truthy }
+      it { expect(@token.is_a?(CloudDoor::Token)).to be_truthy }
       it do
         token_values     = get_instance_variable_values(@token)
         token_org_values = get_instance_variable_values(token_org)

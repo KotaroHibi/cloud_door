@@ -1,5 +1,5 @@
-Fabricator(:account) do
-  initialize_with { Account.new(nil) }
+Fabricator(:account, class_name: :'CloudDoor::Account') do
+  initialize_with { CloudDoor::Account.new(nil) }
   storage 'onedrive'
   file 'account.yml'
 end
