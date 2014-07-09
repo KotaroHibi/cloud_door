@@ -1,13 +1,29 @@
 module CloudDoor
   class FileList
-    attr_accessor :list_file
+    attr_accessor :list_file, :list_name
     attr_reader :list
 
-    LIST_DIR  = './data/'
+    def initialize(list_name, data_path, id = nil)
+      @list_name = list_name
+      @data_path = data_path
+      if (id.nil?)
+        @list_file = @data_path + @list_name
+      else
+        list_dir = @data_path + "#{id}"
+        unless File.exists?(list_dir)
+          Dir.mkdir(list_dir)
+        end
+        @list_file = "#{list_dir}/#{@list_name}"
+      end
+      @list = nil
+    end
 
-    def initialize(list_file)
-      @list_file = LIST_DIR + list_file
-      @list      = nil
+    def set_locate(id)
+      list_dir = @data_path + "#{id}"
+      unless File.exists?(list_dir)
+        Dir.mkdir(list_dir)
+      end
+      @list_file = "#{list_dir}/#{@list_name}"
     end
 
     def load_list
@@ -103,6 +119,11 @@ module CloudDoor
       return false if load_list == false
       return false unless %w(current parent target).include?(mode)
       send("convert_#{mode}_id", file_name)
+    end
+
+    def top?(file_name)
+      back = (file_name.scan(CloudStorage::PARENT_DIR_PAT).size) + 1
+      @list.count < back
     end
 
     private

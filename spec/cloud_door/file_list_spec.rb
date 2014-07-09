@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 def create_file_list
-  file_list = CloudDoor::FileList.new('test_list')
+  file_list = CloudDoor::FileList.new('test_list', './data/')
   file_list
 end
 

@@ -2,15 +2,7 @@
 
 require 'rubygems'
 require 'commander/import'
-# require 'cloud_door'
-# require 'cloud_door/console'
-# require 'cloud_door/onedrive'
-# require 'cloud_door/cloud_storage'
-require './lib/cloud_door'
-require './lib/cloud_door/console'
-require './lib/cloud_door/onedrive'
-require './lib/cloud_door/cloud_storage'
-require 'pp'
+require 'cloud_door'
 
 program :version, '0.0.1'
 program :description, 'access onedrive from CLI'

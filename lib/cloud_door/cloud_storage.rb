@@ -3,13 +3,13 @@ require 'open-uri'
 require 'date'
 require 'zip'
 require 'watir-webdriver'
-require 'cloud_door/version'
+require 'cgi'
+require 'cgi/session'
 require 'cloud_door/account'
-require 'cloud_door/cloud_config'
-require 'cloud_door/token'
-require 'cloud_door/file_list'
+require 'cloud_door/config'
 require 'cloud_door/exceptions'
-require 'cloud_door/version'
+require 'cloud_door/file_list'
+require 'cloud_door/token'
 
 module CloudDoor
   class CloudStorage
@@ -44,6 +44,14 @@ module CloudDoor
       else
         super
       end
+    end
+
+    def set_login_account(login_account)
+      @account.login_account = login_account
+    end
+
+    def set_login_password(login_password)
+      @account.login_password = login_password
     end
 
     def set_file_name(file_name)
@@ -89,7 +97,16 @@ module CloudDoor
     def reset_token(token_value)
       raise TokenClassException unless @token.is_a?(Token)
       @token.set_attributes(token_value)
+      session_id = nil
+      if @config.session_use?
+        cgi        = CGI.new
+        session    = CGI::Session.new(cgi)
+        session_id = session.session_id
+        @token.set_locate(session_id)
+        @file_list.set_locate(session_id)
+      end
       @token.write_token
+      session_id
     rescue => e
       handle_exception(e)
     end
@@ -100,11 +117,22 @@ module CloudDoor
       handle_exception(e)
     end
 
-    def show_files(write = true)
+    def show_files(file_name = nil)
+      @file_name = file_name
       raise SetIDException unless set_file_id
-      raise NotDirectoryException if file?
+      raise NotDirectoryException if file?(file_name)
+      pull_files
+    rescue => e
+      handle_exception(e)
+    end
+
+    def change_directory(file_name)
+      raise FileNameEmptyException if file_name.nil? || file_name.empty?
+      @file_name = file_name
+      raise SetIDException unless set_file_id
+      raise NotDirectoryException if file?(file_name)
       items = pull_files
-      @file_list.write_file_list(items, @file_id, @file_name) if write
+      @file_list.write_file_list(items, @file_id, @file_name)
       items
     rescue => e
       handle_exception(e)
@@ -114,10 +142,11 @@ module CloudDoor
       @file_list.pull_current_dir
     end
 
-    def show_property
-      raise FileNameEmptyException if @file_name.nil? || @file_name.empty?
+    def show_property(file_name)
+      raise FileNameEmptyException if file_name.nil? || file_name.empty?
+      @file_name = file_name
       raise SetIDException unless set_file_id
-      unless file_exists?
+      unless file_exist?(file_name)
         raise FileNotExistsException, "'#{@file_name}' is not exists on cloud."
       end
       info = request_file
@@ -125,6 +154,130 @@ module CloudDoor
       format_property(info)
     rescue => e
       handle_exception(e)
+    end
+
+    def download_file(file_name)
+      raise FileNameEmptyException if file_name.nil? || file_name.empty?
+      @file_name = file_name
+      raise SetIDException unless set_file_id
+      raise NotFileException unless file?(file_name)
+      request_download
+      File.exist?(@file_name)
+    rescue => e
+      handle_exception(e)
+    end
+
+    def upload_file(file_name)
+      @up_file_name = file_name
+      raise FileNameEmptyException if @up_file_name.nil? || @up_file_name.empty?
+      unless File.exist?(@up_file_name)
+        raise FileNotExistsException, "'#{@up_file_name}' is not exists on local."
+      end
+      @parent_id = pull_parent_id
+      up_file = assign_upload_file_name(file_name)
+      compress_file if File.directory?(@up_file_name)
+      # if not raise error, judge that's success
+      request_upload(up_file)
+      update_file_list
+      File.delete(up_file) if File.directory?(@up_file_name)
+      true
+    rescue => e
+      unless e.is_a?(FileNameEmptyException)
+        File.delete(up_file) if File.directory?(@up_file_name)
+      end
+      handle_exception(e)
+    end
+
+    def delete_file(file_name)
+      @file_name = file_name
+      raise FileNameEmptyException if @file_name.nil? || @file_name.empty?
+      raise SetIDException unless set_file_id
+      # if not raise error, judge that's success
+      request_delete
+      @parent_id = pull_parent_id
+      update_file_list
+      true
+    rescue => e
+      handle_exception(e)
+    end
+
+    def make_directory(mkdir_name)
+      @mkdir_name = mkdir_name
+      raise DirectoryNameEmptyException if @mkdir_name.nil? || @mkdir_name.empty?
+      @parent_id = pull_parent_id
+      # if not raise error, judge that's success
+      request_mkdir
+      update_file_list
+      true
+    rescue => e
+      handle_exception(e)
+    end
+
+    def file_exist?(file_name)
+      if file_name =~ PARENT_DIR_PAT
+        return !@file_list.top?(file_name)
+      end
+      @parent_id = pull_parent_id
+      items = pull_files
+      @parent_id = nil
+      return false if items.empty? || !items.is_a?(Hash)
+      items.key?(file_name)
+    rescue => e
+      handle_exception(e)
+    end
+
+    def has_file?(file_name)
+      raise FileNameEmptyException if file_name.nil? || file_name.empty?
+      @file_name = file_name
+      raise SetIDException unless set_file_id
+      return false if file?(file_name)
+      info = show_property(file_name)
+      raise NoDataException if info.nil? || !info.is_a?(Hash) || !info.key?('count')
+      (info['count'] > 0)
+    rescue => e
+      handle_exception(e)
+    end
+
+    def file?(file_name)
+      return false if file_name.nil? || file_name.empty?
+      return false if file_name =~ PARENT_DIR_PAT
+      properties = @file_list.pull_file_properties(file_name)
+      return false unless properties
+      properties['type'] == 'file' ? true : false
+    end
+
+    def assign_upload_file_name(file_name)
+      if File.directory?(file_name)
+        "#{file_name}.zip"
+      else
+        file_name
+      end
+    end
+
+    private
+
+    def get_session_id
+      session_id = nil
+      if @config.session_use?
+        cgi        = CGI.new
+        session    = CGI::Session.new(cgi)
+        session_id = session['locate']
+      end
+      session_id
+    end
+
+    def set_file_id
+      if @file_name.nil? || @file_name.empty?
+        mode = 'current'
+      elsif @file_name =~ PARENT_DIR_PAT
+        mode = 'parent'
+      else
+        mode = 'target'
+      end
+      file_id = @file_list.convert_name_to_id(mode, @file_name)
+      return false if file_id.is_a?(FalseClass)
+      @file_id = file_id
+      true
     end
 
     def pick_cloud_info(method, key)
@@ -140,122 +293,6 @@ module CloudDoor
       info[key]
     rescue => e
       handle_exception(e)
-    end
-
-    def download_file
-      raise FileNameEmptyException if @file_name.nil? || @file_name.empty?
-      raise SetIDException unless set_file_id
-      raise NotFileException unless file?
-      request_download
-      File.exist?(@file_name)
-    rescue => e
-      handle_exception(e)
-    end
-
-    def upload_file
-      raise FileNameEmptyException if @up_file_name.nil? || @up_file_name.empty?
-      unless File.exist?(@up_file_name)
-        raise FileNotExistsException, "'#{@up_file_name}' is not exists on local."
-      end
-      @parent_id = pull_parent_id
-      up_file = assign_upload_file_name
-      compress_file if File.directory?(@up_file_name)
-      # if not raise error, judge that's success
-      request_upload(up_file)
-      update_file_list
-      File.delete(up_file) if File.directory?(@up_file_name)
-      true
-    rescue => e
-      unless e.is_a?(FileNameEmptyException)
-        File.delete(up_file) if File.directory?(@up_file_name)
-      end
-      handle_exception(e)
-    end
-
-    def delete_file
-      raise FileNameEmptyException if @file_name.nil? || @file_name.empty?
-      raise SetIDException unless set_file_id
-      # if not raise error, judge that's success
-      request_delete
-      @parent_id = pull_parent_id
-      update_file_list
-      true
-    rescue => e
-      handle_exception(e)
-    end
-
-    def make_directory
-      raise DirectoryNameEmptyException if @mkdir_name.nil? || @mkdir_name.empty?
-      @parent_id = pull_parent_id
-      # if not raise error, judge that's success
-      request_mkdir
-      update_file_list
-      true
-    rescue => e
-      handle_exception(e)
-    end
-
-    def assign_upload_file_name
-      if File.directory?(@up_file_name)
-        "#{@up_file_name}.zip"
-      else
-        @up_file_name
-      end
-    end
-
-    def delete_file_list
-      @file_list.delete_file
-    end
-
-    def file_exists?
-      if @up_file_name
-        file_name = assign_upload_file_name
-      elsif @mkdir_name
-        file_name = @mkdir_name
-      else
-        file_name = @file_name
-      end
-      @parent_id = pull_parent_id
-      items = pull_files
-      return false if items.empty? || !items.is_a?(Hash)
-      items.key?(file_name)
-    rescue => e
-      handle_exception(e)
-    end
-
-    def has_file?
-      raise FileNameEmptyException if @file_name.nil? || @file_name.empty?
-      raise SetIDException unless set_file_id
-      return false if file?
-      info = show_property
-      raise NoDataException if info.nil? || !info.is_a?(Hash) || !info.key?('count')
-      (info['count'] > 0)
-    rescue => e
-      handle_exception(e)
-    end
-
-    def file?
-      return false if @file_name.nil? || @file_name.empty?
-      return false if @file_name =~ PARENT_DIR_PAT
-      properties = @file_list.pull_file_properties(@file_name)
-      return false unless properties
-      properties['type'] == 'file' ? true : false
-    end
-
-    private
-
-    def set_file_id
-      if @file_name.nil? || @file_name.empty?
-        mode = 'current'
-      elsif @file_name =~ PARENT_DIR_PAT
-        mode = 'parent'
-      else
-        mode = 'target'
-      end
-      file_id = @file_list.convert_name_to_id(mode, @file_name)
-      return false if file_id.is_a?(FalseClass)
-      @file_id = file_id
-      true
     end
 
     def pull_parent_id

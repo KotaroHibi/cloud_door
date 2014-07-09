@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'CloudConfig' do
+describe 'Config' do
   describe 'load_yaml' do
     let(:config_file) { './data/test.yml' }
     before(:all) do
@@ -20,13 +20,13 @@ describe 'CloudConfig' do
     end
     before(:each) { config.load_yaml }
     context 'onedrive' do
-      let(:config) { Fabricate.build(:cloud_config, storage: 'onedrive', file: config_file) }
+      let(:config) { Fabricate.build(:config, storage: 'onedrive', file: config_file) }
       it { expect(config.client_id).to eq '1234' }
       it { expect(config.client_secret).to eq 'abcd' }
       it { expect(config.redirect_url).to eq 'onedrive' }
     end
     context 'dropbox' do
-      let(:config) { Fabricate.build(:cloud_config, storage: 'dropbox', file: config_file) }
+      let(:config) { Fabricate.build(:config, storage: 'dropbox', file: config_file) }
       it { expect(config.client_id).to eq '5678' }
       it { expect(config.client_secret).to eq 'efgh' }
       it { expect(config.redirect_url).to eq 'dropbox' }
@@ -43,7 +43,7 @@ describe 'CloudConfig' do
       account.update_yaml(update_params)
     end
     context 'onedrive' do
-      let(:account) { Fabricate.build(:cloud_config, storage: 'onedrive', file: config_file) }
+      let(:account) { Fabricate.build(:config, storage: 'onedrive', file: config_file) }
       let(:update_params) do
         {
           'client_id'     => '1234',
@@ -58,7 +58,7 @@ describe 'CloudConfig' do
       it { expect(load_file['redirect_url']).to eq 'onedrive' }
     end
     context 'dropbox' do
-      let(:account) { Fabricate.build(:cloud_config, storage: 'dropbox', file: config_file) }
+      let(:account) { Fabricate.build(:config, storage: 'dropbox', file: config_file) }
       let(:update_params) do
         {
           'client_id'     => '5678',
@@ -79,7 +79,7 @@ describe 'CloudConfig' do
 
   describe 'init?' do
     subject { config.init? }
-    let(:config) { Fabricate.build(:cloud_config) }
+    let(:config) { Fabricate.build(:config) }
     context 'initialized' do
       before(:each) do
         config.client_id     = '1234'

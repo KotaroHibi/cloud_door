@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe 'Token' do
   describe 'set_attributes' do
-    let(:token) { CloudDoor::Token.new('test_token') }
+    let(:token) { CloudDoor::Token.new('test_token', './data/') }
     let(:attributes) do
       {
         'token_type'    => 'bearer',
@@ -47,13 +47,13 @@ describe 'Token' do
   end
 
   describe 'load_token' do
-    subject { CloudDoor::Token.load_token('test_token') }
+    subject { CloudDoor::Token.load_token('test_token', './data/') }
     let(:token_file) { './data/test_token' }
     context 'success' do
       let(:token_org) { Fabricate.build(:token, token_file: 'test_token') }
       before(:each) do
         open(token_file, 'wb') { |file| file << Marshal.dump(token_org) }
-        @token = CloudDoor::Token.load_token('test_token')
+        @token = CloudDoor::Token.load_token('test_token', './data/')
       end
       it { is_expected.to be_truthy }
       it { expect(@token.is_a?(CloudDoor::Token)).to be_truthy }

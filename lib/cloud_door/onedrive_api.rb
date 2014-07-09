@@ -1,7 +1,6 @@
 require 'logger'
 require 'open-uri'
 require 'rest_client'
-require 'pp'
 
 module CloudDoor
   class OneDriveApi

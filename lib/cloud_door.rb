@@ -1,22 +1,42 @@
-require 'cloud_door/account'
-require 'cloud_door/cloud_config'
-require 'cloud_door/cloud_storage'
-require 'cloud_door/cloud_yaml'
-require 'cloud_door/console'
-require 'cloud_door/dropbox'
-require 'cloud_door/exceptions'
-require 'cloud_door/file_list'
-require 'cloud_door/onedrive'
-require 'cloud_door/onedrive_api'
-require 'cloud_door/token'
-require 'cloud_door/version'
+# require 'cloud_door/account'
+# require 'cloud_door/config'
+# require 'cloud_door/cloud_storage'
+# require 'cloud_door/cloud_yaml'
+# require 'cloud_door/console'
+# require 'cloud_door/dropbox'
+# require 'cloud_door/exceptions'
+# require 'cloud_door/file_list'
+# require 'cloud_door/onedrive'
+# require 'cloud_door/onedrive_api'
+# require 'cloud_door/token'
+# require 'cloud_door/version'
+require './lib/cloud_door/account'
+require './lib/cloud_door/config'
+require './lib/cloud_door/cloud_storage'
+require './lib/cloud_door/cloud_yaml'
+require './lib/cloud_door/console'
+require './lib/cloud_door/dropbox'
+require './lib/cloud_door/exceptions'
+require './lib/cloud_door/file_list'
+require './lib/cloud_door/onedrive'
+require './lib/cloud_door/onedrive_api'
+require './lib/cloud_door/token'
+require './lib/cloud_door/version'
 
 module CloudDoor
   class CloudDoor
     attr_accessor :storage
 
-    def initialize(storage_klass)
-      @storage = storage_klass.new
+    def initialize(storage_klass, id = nil)
+      @storage = storage_klass.new(id)
+    end
+
+    def set_login_account(login_account)
+      @storage.set_login_account(login_account)
+    end
+
+    def set_login_password(login_password)
+      @storage.set_login_password(login_password)
     end
 
     def set_file_name(file_name)
@@ -31,8 +51,8 @@ module CloudDoor
       @storage.set_mkdir_name(mkdir_name)
     end
 
-    def login
-      @storage.login
+    def login(login_account, login_password)
+      @storage.login(login_account, login_password)
     end
 
     def load_token(token_file = nil)
@@ -79,56 +99,52 @@ module CloudDoor
       @storage.show_user
     end
 
-    def get_cloud_info(target, key = nil)
-      @storage.get_cloud_info(target, key)
+    def show_files(file_name = nil)
+      @storage.show_files(file_name)
     end
 
-    def show_files(write = true)
-      @storage.show_files(write)
+    def change_directory(file_name)
+      @storage.change_directory(file_name)
     end
 
     def show_current_dir
       @storage.show_current_dir
     end
 
-    def show_property
-      @storage.show_property
+    def show_property(file_name)
+      @storage.show_property(file_name)
     end
 
-    def delete_file
-      @storage.delete_file
+    def delete_file(file_name)
+      @storage.delete_file(file_name)
     end
 
-    def download_file
-      @storage.download_file
+    def download_file(file_name)
+      @storage.download_file(file_name)
     end
 
-    def upload_file
-      @storage.upload_file
+    def upload_file(file_name)
+      @storage.upload_file(file_name)
     end
 
-    def assign_upload_file_name
-      @storage.assign_upload_file_name
+    def make_directory(mkdir_name)
+      @storage.make_directory(mkdir_name)
     end
 
-    def make_directory
-      @storage.make_directory
+    def file_exist?(file_name)
+      @storage.file_exist?(file_name)
     end
 
-    def delete_file_list
-      @storage.delete_file_list
+    def has_file?(file_name)
+      @storage.has_file?(file_name)
     end
 
-    def file_exists?
-      @storage.file_exists?
+    def file?(file_name)
+      @storage.file?(file_name)
     end
 
-    def has_file?
-      @storage.has_file?
-    end
-
-    def file?
-      @storage.file?
+    def assign_upload_file_name(file_name)
+      @storage.assign_upload_file_name(file_name)
     end
   end
 end

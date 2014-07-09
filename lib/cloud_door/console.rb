@@ -1,17 +1,13 @@
 require 'highline/import'
 require 'cloud_door'
-require 'cloud_door/cloud_storage'
-require 'cloud_door/dropbox'
-require 'cloud_door/onedrive'
-require 'cloud_door/exceptions'
 
 module CloudDoor
   class Console
     attr_accessor :drive
     attr_reader :storage_name
 
-    def initialize(drive)
-      @drive = CloudDoor.new(drive)
+    def initialize(drive, id = nil)
+      @drive = CloudDoor.new(drive, id)
       @storage_name = @drive.show_storage_name
     end
 
@@ -41,16 +37,17 @@ module CloudDoor
         exit
       end
       exit unless agree(make_message(:agree_access, @storage_name))
-      auth_set_account(default)
+      account = auth_set_account(default)
       say(make_message(:start_connection, @storage_name))
-      if @drive.login
+      if @drive.login(account['login_account'], account['login_password'])
         user      = @drive.show_user
         user_name = user['name'] || user['display_name']
         say(make_message(:result_success, 'login'))
         say(make_message(:login_as, user_name))
         say("\n")
-        @drive.delete_file_list
-        show_files
+        pwd  = @drive.show_current_dir
+        list = @drive.show_files
+        show_file_list(pwd, list)
       else
         say(make_message(:result_fail, 'login'))
       end
@@ -60,13 +57,15 @@ module CloudDoor
 
     def ls(file_name)
       @drive.load_token
-      @drive.set_file_name(file_name)
-      if file_name.nil? || file_name.empty?
-        write = true
-      else
-        write = false
+      fullname = make_fullname(file_name)
+      if !file_name.nil? && !file_name.empty?
+        unless @drive.file_exist?(file_name)
+          say(make_message(:file_not_exists, fullname, @storage_name))
+          exit
+        end
       end
-      show_files(file_name, write)
+      list = @drive.show_files(file_name)
+      show_file_list(fullname, list)
     rescue => e
       show_exception(e)
     end
@@ -77,14 +76,14 @@ module CloudDoor
         exit
       end
       @drive.load_token
-      @drive.set_file_name(file_name)
       fullname = make_fullname(file_name)
-      unless @drive.file_exists?
+      unless @drive.file_exist?(file_name)
         say(make_message(:file_not_exists, fullname, @storage_name))
         exit
       end
       say(make_message(:move_to, fullname))
-      show_files(file_name)
+      list = @drive.change_directory(file_name)
+      show_file_list(fullname, list)
     rescue => e
       show_exception(e)
     end
@@ -95,13 +94,12 @@ module CloudDoor
         exit
       end
       @drive.load_token
-      @drive.set_file_name(file_name)
       fullname = make_fullname(file_name)
-      unless @drive.file_exists?
+      unless @drive.file_exist?(file_name)
         say(make_message(:file_not_exists, fullname, @storage_name))
         exit
       end
-      info = @drive.show_property
+      info = @drive.show_property(file_name)
       unless (info.empty?)
         say(make_message(:show_information, fullname))
         max = info.max { |a, b| a[0].length <=> b[0].length }
@@ -125,17 +123,16 @@ module CloudDoor
         exit
       end
       @drive.load_token
-      @drive.set_file_name(file_name)
       fullname = make_fullname(file_name)
-      unless @drive.file_exists?
+      unless @drive.file_exist?(file_name)
         say(make_message(:file_not_exists, fullname, @storage_name))
         exit
       end
-      if File.exists?(file_name)
-        say(make_message(:same_file_exists, file_name, 'local'))
+      if File.exist?(file_name)
+        say(make_message(:same_file_exist, file_name, 'local'))
         exit unless agree(make_message(:agree_overwrite, file_name))
       end
-      result = @drive.download_file
+      result = @drive.download_file(file_name)
       show_result_message(result, "'#{file_name}' download")
     rescue => e
       show_exception(e)
@@ -147,7 +144,6 @@ module CloudDoor
         exit
       end
       @drive.load_token
-      @drive.set_up_file_name(file_name)
       unless File.exists?(file_name)
         say(make_message(:file_not_exists, file_name, 'local'))
         exit
@@ -157,13 +153,13 @@ module CloudDoor
         say(make_message(:compress_to, file_name))
         say("\n")
       end
-      up_file  = @drive.assign_upload_file_name
+      up_file  = @drive.assign_upload_file_name(file_name)
       fullname = make_fullname(up_file)
-      if @drive.file_exists?
-        say(make_message(:same_file_exists, fullname, @storage_name))
+      if @drive.file_exist?(up_file)
+        say(make_message(:same_file_exist, fullname, @storage_name))
         exit unless agree(make_message(:agree_overwrite, fullname))
       end
-      result = @drive.upload_file
+      result = @drive.upload_file(file_name)
       show_result_message(result, "'#{fullname}' upload")
     rescue => e
       show_exception(e)
@@ -175,19 +171,18 @@ module CloudDoor
         exit
       end
       @drive.load_token
-      @drive.set_file_name(file_name)
       fullname = make_fullname(file_name)
       exit unless agree(make_message(:agree_delete, fullname))
-      unless @drive.file_exists?
+      unless @drive.file_exist?(file_name)
         say(make_message(:file_not_exists, fullname, @storage_name))
         exit
       end
-      if @drive.has_file?
+      if @drive.has_file?(file_name)
         say(make_message(:has_files, fullname))
         # exit unless agree("Do you want to delete these files (Y/N)?")
         exit
       end
-      result = @drive.delete_file
+      result = @drive.delete_file(file_name)
       show_result_message(result, "'#{fullname}' delete")
     rescue => e
       show_exception(e)
@@ -199,13 +194,12 @@ module CloudDoor
         exit
       end
       @drive.load_token
-      @drive.set_mkdir_name(mkdir_name)
       fullname = make_fullname(mkdir_name)
-      if @drive.file_exists?
-        say(make_message(:same_file_exists, fullname, @storage_name))
+      if @drive.file_exist?(mkdir_name)
+        say(make_message(:same_file_exist, fullname, @storage_name))
         exit
       end
-      result = @drive.make_directory
+      result = @drive.make_directory(mkdir_name)
       show_result_message(result, "make '#{fullname}' directory")
     rescue => e
       show_exception(e)
@@ -233,7 +227,7 @@ module CloudDoor
         has_files:          "'#{args[0]}' has files.",
         wrong_parameter:    "this command needs #{args[0]}.",
         file_not_exists:    "'#{args[0]}' not exists in #{args[1]}.",
-        same_file_exists:   "'#{args[0]}' already exists in #{args[1]}.",
+        same_file_exist:    "'#{args[0]}' already exists in #{args[1]}.",
         agree_access:       "do you want to allow access to the #{args[0]} from this system(Y/N)?",
         agree_overwrite:    "do you want to overwrite '#{args[0]}' (Y/N)?",
         agree_delete:       "do you want to delete '#{args[0]}' (Y/N)?",
@@ -250,7 +244,11 @@ module CloudDoor
 
     def make_fullname(file_name)
       pwd = @drive.show_current_dir
-      "#{pwd}/#{file_name}"
+      if file_name.nil? || file_name.empty?
+        pwd
+      else
+        "#{pwd}/#{file_name}"
+      end
     end
 
     def show_configuration(config)
@@ -284,27 +282,28 @@ module CloudDoor
     end
 
     def auth_set_account(default)
+      account = Hash.new
       if default
         if @drive.isset_account?
-          account = @drive.show_account
-          say(make_message(:account_found, account.login_account))
+          default_account = @drive.show_account
+          account['login_account']  = default_account.login_account
+          account['login_password'] = default_account.login_password
+          say(make_message(:account_found, account['login_account']))
         else
           say(make_message(:account_not_found, @storage_name.downcase))
           exit
         end
       else
         say(make_message(:ask_account, @storage_name))
-        @drive.storage.account.login_account  = ask('login_account : ')
-        @drive.storage.account.login_password = ask('login_password: ') { |q| q.echo = '*' }
+        login_account  = ask('login_account : ')
+        login_password = ask('login_password: ') { |q| q.echo = '*' }
+        account['login_account']  = login_account
+        account['login_password'] = login_password
       end
+      account
     end
 
-    def show_files(file_name = nil, write = true)
-      pwd = @drive.show_current_dir
-      if !(file_name.nil? || file_name.empty?)
-        pwd << "/#{file_name}"
-      end
-      list = @drive.show_files(write)
+    def show_file_list(pwd, list)
       if list.count > 0
         say(make_message(:show_files, pwd))
         list.each do |name, properties|

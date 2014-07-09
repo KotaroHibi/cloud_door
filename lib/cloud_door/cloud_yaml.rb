@@ -1,4 +1,5 @@
 require 'yaml'
+
 module CloudDoor
   class CloudYaml
     attr_accessor :file, :items, :storage

@@ -19,7 +19,7 @@ describe 'Console' do
     # $terminal is instance of Highline class
     $terminal.output = StringIO.new
   end
-
+=begin
   describe 'config' do
     subject { console.config(show) }
     let(:console) { create_console }
@@ -77,7 +77,7 @@ EOF
       end
     end
   end
-
+=end
   describe 'auth' do
     subject { console.auth(default) }
     let(:console) { create_console }
@@ -100,7 +100,7 @@ EOF
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
             .and_return('/top')
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-            .with(true)
+            .with(nil)
             .and_return(posit)
           subject
           expects = <<EOF
@@ -132,7 +132,7 @@ EOF
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
             .and_return('/top')
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-            .with(true)
+            .with(nil)
             .and_return(posit)
           subject
           expects = <<EOF
@@ -201,7 +201,7 @@ EOF
       end
       it do
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-          .with(true)
+          .with(nil)
           .and_return(posit)
         subject
         expects = <<EOF
@@ -217,7 +217,7 @@ EOF
       let(:posit) { {} }
       it do
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-          .with(true)
+          .with(nil)
           .and_return(posit)
         subject
         expects = "you have no file on '/top'."
@@ -234,14 +234,28 @@ EOF
       end
       it do
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-          .with(false)
+          .with(file_name)
           .and_return(posit)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
+          .and_return(true)
         subject
         expects = <<EOF
 you have these files on '/top/folder1'.
 [file  ] file2
 [folder] folder2
 EOF
+        expect($terminal.output.string).to include(expects)
+      end
+    end
+    context 'file not exists' do
+      let(:file_name) { 'folder9' }
+      it do
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
+          .and_return(false)
+        expect { subject }.to raise_error(SystemExit)
+        expects = "'/top/folder9' not exists in OneDrive"
         expect($terminal.output.string).to include(expects)
       end
     end
@@ -267,13 +281,13 @@ EOF
         }
       end
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(true)
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-          .with(true)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:change_directory)
+          .with(file_name)
           .and_return(posit)
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
-          .twice
           .and_return('/top')
         subject
         expects = <<EOF
@@ -289,13 +303,13 @@ EOF
       let(:file_name) { 'folder1' }
       let(:posit) { {} }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(true)
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
-          .with(true)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:change_directory)
+          .with(file_name)
           .and_return(posit)
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
-          .twice
           .and_return('/top')
         subject
         expects = <<EOF
@@ -308,7 +322,8 @@ EOF
     context 'file not exists' do
       let(:file_name) { 'folder9' }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(false)
         expect { subject }.to raise_error(SystemExit)
         expects = "'/top/folder9' not exists in OneDrive"
@@ -337,7 +352,8 @@ EOF
         }
       end
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(true)
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_property)
           .and_return(posit)
@@ -353,7 +369,8 @@ EOF
     context 'file not exists' do
       let(:file_name) { 'file9' }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(false)
         expect { subject }.to raise_error(SystemExit)
         expects = "'/top/file9' not exists in OneDrive"
@@ -390,9 +407,11 @@ EOF
       context 'not duplicate' do
         let(:file_name) { 'file1' }
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with(file_name)
             .and_return(true)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:download_file)
+            .with(file_name)
             .and_return(true)
           subject
           expects = "'file1' download success."
@@ -405,7 +424,8 @@ EOF
           open(file_name, 'wb') { |file| file << 'test' }
         end
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with(file_name)
             .and_return(true)
           expect { subject }.to raise_error(SystemExit)
           expects = "'file1' already exists in local."
@@ -419,7 +439,8 @@ EOF
     context 'file not exists' do
       let(:file_name) { 'file9' }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(false)
         expect { subject }.to raise_error(SystemExit)
         expects = "'/top/file9' not exists in OneDrive."
@@ -446,9 +467,11 @@ EOF
           open(file_name, 'wb') { |file| file << 'test' }
         end
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with(file_name)
             .and_return(false)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:upload_file)
+            .with(file_name)
             .and_return(true)
           subject
           expects = <<EOF
@@ -466,7 +489,8 @@ EOF
           open(file_name, 'wb') { |file| file << 'test' }
         end
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with(file_name)
             .and_return(true)
           expect { subject }.to raise_error(SystemExit)
           expects = "'/top/file1' already exists in OneDrive."
@@ -482,9 +506,11 @@ EOF
           Dir.mkdir(file_name)
         end
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with("#{file_name}.zip")
             .and_return(false)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:upload_file)
+            .with(file_name)
             .and_return(true)
           subject
           expects = <<EOF
@@ -525,11 +551,14 @@ EOF
       context 'target is file' do
         let(:file_name) { 'file1' }
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with(file_name)
             .and_return(true)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:has_file?)
+            .with(file_name)
             .and_return(false)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:delete_file)
+            .with(file_name)
             .and_return(true)
           subject
           expects = "'/top/file1' delete success."
@@ -539,9 +568,11 @@ EOF
       context 'target is directory' do
         let(:file_name) { 'folder1' }
         it do
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+            .with(file_name)
             .and_return(true)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:has_file?)
+            .with(file_name)
             .and_return(true)
           expect { subject }.to raise_error(SystemExit)
           expects = "'/top/folder1' has files."
@@ -552,7 +583,8 @@ EOF
     context 'file not exists' do
       let(:file_name) { 'file9' }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(file_name)
           .and_return(false)
         expect { subject }.to raise_error(SystemExit)
         expects = "'/top/file9' not exists in OneDrive"
@@ -575,9 +607,11 @@ EOF
     context 'folder not exists' do
       let(:mkdir_name) { 'folder1' }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(mkdir_name)
           .and_return(false)
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:make_directory)
+          .with(mkdir_name)
           .and_return(true)
         subject
         expects = "make '/top/folder1' directory success."
@@ -587,7 +621,8 @@ EOF
     context 'folder exists' do
       let(:mkdir_name) { 'folder1' }
       it do
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exists?)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:file_exist?)
+          .with(mkdir_name)
           .and_return(true)
         expect { subject }.to raise_error(SystemExit)
         expects = "'/top/folder1' already exists in OneDrive."

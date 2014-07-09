@@ -2,17 +2,7 @@ require 'rubygems'
 require 'webmock/rspec'
 require 'fabrication'
 require 'pp'
-require 'cloud_door/account'
-require 'cloud_door/cloud_config'
-require 'cloud_door/cloud_storage'
-require 'cloud_door/cloud_yaml'
-require 'cloud_door/console'
-require 'cloud_door/dropbox'
-require 'cloud_door/exceptions'
-require 'cloud_door/file_list'
-require 'cloud_door/onedrive'
-require 'cloud_door/onedrive_api'
-require 'cloud_door/token'
+require 'cloud_door'
 
 # override for test
 class HighLine

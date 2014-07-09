@@ -1,5 +1,5 @@
-require 'cloud_door/onedrive_api'
 require 'cloud_door/cloud_storage'
+require 'cloud_door/onedrive_api'
 
 module CloudDoor
   class OneDrive < CloudStorage
@@ -19,18 +19,19 @@ module CloudDoor
     TIME_PROPERTY_PAT = /_time$/
     STORAGE_NAME = 'OneDrive'
 
-    def initialize
-      @config       = CloudConfig.new('onedrive')
-      @account      = Account.new('onedrive')
-      @token        = Token.new('onedrive_token')
-      @file_list    = FileList.new('onedrive_list')
+    def initialize(id = nil)
+      @config       = Config.new('onedrive')
+      @account      = Account.new('onedrive', @config.data_path)
+      session_id    = get_session_id
+      @token        = Token.new('onedrive_token', @config.data_path, session_id)
+      @file_list    = FileList.new('onedrive_list', @config.data_path, session_id)
       @file_id      = nil
       @root_id      = ROOT_ID
       @storage_name = STORAGE_NAME
     end
 
-    def load_token(token_file = 'onedrive_token')
-      @token = Token.load_token(token_file)
+    def load_token(token_file = 'onedrive_token', session_id = nil)
+      @token = Token.load_token(token_file, @config.data_path, session_id)
     end
 
     def refresh_token
@@ -43,12 +44,21 @@ module CloudDoor
       handle_exception(e)
     end
 
-   def login
+   def login(login_account, login_password)
+      @account.login_account  = login_account
+      @account.login_password = login_password
       url  = login_browser
       info = request_get_token(url)
       raise NoDataException if info.nil?
-      reset_token(info)
-      true
+      session_id = reset_token(info)
+      items = pull_files
+      @file_list.delete_file
+      @file_list.write_file_list(items)
+      if @config.session_use?
+        session_id
+      else
+        true
+      end
     rescue => e
       handle_exception(e)
     end

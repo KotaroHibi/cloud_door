@@ -1,0 +1,12 @@
+---
+global:
+  data_path: 
+  session_flg: 
+onedrive:
+  client_id: 
+  client_secret: 
+  redirect_url: 
+dropbox:
+  client_id: 
+  client_secret: 
+  redirect_url: 

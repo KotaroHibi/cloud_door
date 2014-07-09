@@ -21,27 +21,37 @@ module CloudDoor
     ROOT_ID         = '/'
     STORAGE_NAME    = 'Dropbox'
 
-    def initialize
-      @config       = CloudConfig.new('dropbox')
-      @account      = Account.new('dropbox')
-      @token        = Token.new('dropbox_token')
-      @file_list    = FileList.new('dropbox_list')
+    def initialize(id = nil)
+      @config       = Config.new('dropbox')
+      @account      = Account.new('dropbox', @config.data_path)
+      session_id    = get_session_id
+      @token        = Token.new('dropbox_token', @config.data_path, session_id)
+      @file_list    = FileList.new('dropbox_list', @config.data_path, session_id)
       @file_id      = nil
       @root_id      = ROOT_ID
       @storage_name = STORAGE_NAME
     end
 
-    def load_token(token_file = 'dropbox_token')
-      @token = Token.load_token(token_file)
+    def load_token(token_file = 'dropbox_token', session_id = nil)
+      @token = Token.load_token(token_file, @config.data_path, session_id)
     end
 
-    def login
+   def login(login_account, login_password)
+      @account.login_account  = login_account
+      @account.login_password = login_password
       flow = DropboxOAuth2FlowNoRedirect.new(@config.client_id, @config.client_secret)
       code = login_browser(flow.start())
       access_token, user_id = flow.finish(code)
       raise NoDataException if access_token.nil?
-      reset_token({'access_token' => access_token})
-      true
+      session_id = reset_token({'access_token' => access_token})
+      items = pull_files
+      @file_list.delete_file
+      @file_list.write_file_list(items)
+      if @config.session_use?
+        session_id
+      else
+        true
+      end
     rescue => e
       handle_exception(e)
     end
@@ -133,8 +143,7 @@ module CloudDoor
     end
 
     def login_browser(auth_url)
-      # browser = Watir::Browser.new :phantomjs
-      browser = Watir::Browser.new :firefox
+      browser = Watir::Browser.new :phantomjs
       # input account
       browser.goto(auth_url)
       browser.wait
