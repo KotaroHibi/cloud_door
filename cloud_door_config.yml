@@ -1,7 +1,7 @@
 ---
 global:
-  data_path: 
-  session_flg: 
+  data_path: './data/'
+  session_flg: 0
 onedrive:
   client_id: 
   client_secret: 
