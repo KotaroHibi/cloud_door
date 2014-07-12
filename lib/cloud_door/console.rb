@@ -6,8 +6,8 @@ module CloudDoor
     attr_accessor :drive
     attr_reader :storage_name
 
-    def initialize(drive, id = nil)
-      @drive = CloudDoor.new(drive, id)
+    def initialize(drive, session_id = nil)
+      @drive = CloudDoor.new(drive, session_id)
       @storage_name = @drive.show_storage_name
     end
 
@@ -31,13 +31,13 @@ module CloudDoor
       show_result_message(result, 'update account')
     end
 
-    def auth(default = false)
+    def login(default = false)
       unless @drive.configuration_init?
         say(make_message(:not_configuration, @storage_name.downcase))
         exit
       end
       exit unless agree(make_message(:agree_access, @storage_name))
-      account = auth_set_account(default)
+      account = login_set_account(default)
       say(make_message(:start_connection, @storage_name))
       if @drive.login(account['login_account'], account['login_password'])
         user      = @drive.show_user
@@ -45,7 +45,7 @@ module CloudDoor
         say(make_message(:result_success, 'login'))
         say(make_message(:login_as, user_name))
         say("\n")
-        pwd  = @drive.show_current_dir
+        pwd  = @drive.show_current_directory
         list = @drive.show_files
         show_file_list(pwd, list)
       else
@@ -114,7 +114,7 @@ module CloudDoor
 
     def pwd
       @drive.load_token
-      say(@drive.show_current_dir)
+      say(@drive.show_current_directory)
     end
 
     def download(file_name)
@@ -243,7 +243,7 @@ module CloudDoor
     end
 
     def make_fullname(file_name)
-      pwd = @drive.show_current_dir
+      pwd = @drive.show_current_directory
       if file_name.nil? || file_name.empty?
         pwd
       else
@@ -281,7 +281,7 @@ module CloudDoor
       accounts.each { |key, val| accounts[key] = val.to_s }
     end
 
-    def auth_set_account(default)
+    def login_set_account(default)
       account = Hash.new
       if default
         if @drive.isset_account?

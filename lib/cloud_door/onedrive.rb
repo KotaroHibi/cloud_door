@@ -19,19 +19,20 @@ module CloudDoor
     TIME_PROPERTY_PAT = /_time$/
     STORAGE_NAME = 'OneDrive'
 
-    def initialize(id = nil)
+    def initialize(session_id = nil)
       @config       = Config.new('onedrive')
       @account      = Account.new('onedrive', @config.data_path)
-      session_id    = get_session_id
       @token        = Token.new('onedrive_token', @config.data_path, session_id)
       @file_list    = FileList.new('onedrive_list', @config.data_path, session_id)
       @file_id      = nil
       @root_id      = ROOT_ID
       @storage_name = STORAGE_NAME
+      @session_id   = session_id
     end
 
-    def load_token(token_file = 'onedrive_token', session_id = nil)
-      @token = Token.load_token(token_file, @config.data_path, session_id)
+    def load_token
+      token_file = File.basename(@token.token_file)
+      @token = Token.load_token(token_file, @config.data_path, @session_id)
     end
 
     def refresh_token
@@ -50,12 +51,12 @@ module CloudDoor
       url  = login_browser
       info = request_get_token(url)
       raise NoDataException if info.nil?
-      session_id = reset_token(info)
+      @session_id = reset_token(info)
       items = pull_files
       @file_list.delete_file
       @file_list.write_file_list(items)
       if @config.session_use?
-        session_id
+        @session_id
       else
         true
       end

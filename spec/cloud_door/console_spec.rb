@@ -78,8 +78,8 @@ EOF
     end
   end
 =end
-  describe 'auth' do
-    subject { console.auth(default) }
+  describe 'login' do
+    subject { console.login(default) }
     let(:console) { create_console }
     context 'success' do
       context 'use default account' do
@@ -97,7 +97,7 @@ EOF
             .and_return(true)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_user)
             .and_return({'name' => 'drive'})
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_directory)
             .and_return('/top')
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
             .with(nil)
@@ -129,7 +129,7 @@ EOF
             .and_return(true)
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_user)
             .and_return({'name' => 'drive'})
-          expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
+          expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_directory)
             .and_return('/top')
           expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_files)
             .with(nil)
@@ -287,7 +287,7 @@ EOF
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:change_directory)
           .with(file_name)
           .and_return(posit)
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_directory)
           .and_return('/top')
         subject
         expects = <<EOF
@@ -309,7 +309,7 @@ EOF
         expect_any_instance_of(CloudDoor::OneDrive).to receive(:change_directory)
           .with(file_name)
           .and_return(posit)
-        expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
+        expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_directory)
           .and_return('/top')
         subject
         expects = <<EOF
@@ -384,7 +384,7 @@ EOF
     let(:console) { create_console }
     let(:posit) { '/top' }
     it do
-      expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_dir)
+      expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_directory)
         .and_return(posit)
       subject
       expects = '/top'

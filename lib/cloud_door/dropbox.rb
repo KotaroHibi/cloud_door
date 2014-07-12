@@ -21,19 +21,20 @@ module CloudDoor
     ROOT_ID         = '/'
     STORAGE_NAME    = 'Dropbox'
 
-    def initialize(id = nil)
+    def initialize(session_id = nil)
       @config       = Config.new('dropbox')
       @account      = Account.new('dropbox', @config.data_path)
-      session_id    = get_session_id
       @token        = Token.new('dropbox_token', @config.data_path, session_id)
       @file_list    = FileList.new('dropbox_list', @config.data_path, session_id)
       @file_id      = nil
       @root_id      = ROOT_ID
       @storage_name = STORAGE_NAME
+      @session_id   = session_id
     end
 
-    def load_token(token_file = 'dropbox_token', session_id = nil)
-      @token = Token.load_token(token_file, @config.data_path, session_id)
+    def load_token
+      token_file = File.basename(@token.token_file)
+      @token = Token.load_token(token_file, @config.data_path, @session_id)
     end
 
    def login(login_account, login_password)
@@ -43,12 +44,12 @@ module CloudDoor
       code = login_browser(flow.start())
       access_token, user_id = flow.finish(code)
       raise NoDataException if access_token.nil?
-      session_id = reset_token({'access_token' => access_token})
+      @session_id = reset_token({'access_token' => access_token})
       items = pull_files
       @file_list.delete_file
       @file_list.write_file_list(items)
       if @config.session_use?
-        session_id
+        @session_id
       else
         true
       end

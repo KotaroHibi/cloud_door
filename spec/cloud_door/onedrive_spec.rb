@@ -150,8 +150,8 @@ describe 'OneDrive' do
     end
   end
 
-  describe 'show_current_dir' do
-    subject { storage.show_current_dir }
+  describe 'show_current_directory' do
+    subject { storage.show_current_directory }
     let(:storage) { create_storage(CloudDoor::OneDrive) }
     it { is_expected.to eq('/top') }
   end
@@ -612,7 +612,7 @@ describe 'OneDrive' do
       open(token_file, 'wb') { |file| file << Marshal.dump(token) }
     end
     it do
-      result = storage.load_token('test_token')
+      result = storage.load_token
       expect(result.is_a?(CloudDoor::Token)).to be_truthy
     end
     after(:each) do

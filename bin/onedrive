@@ -32,15 +32,15 @@ command :account do |c|
   end
 end
 
-command :auth do |c|
-  c.syntax      = 'onedrive auth'
+command :login do |c|
+  c.syntax      = 'onedrive login'
   c.summary     = 'authentication for onedrive'
   c.description = 'authentication for onedrive'
-  c.example 'description', 'onedrive auth'
+  c.example 'description', 'onedrive login'
   c.option '-d'
   c.action do |args, options|
     console = CloudDoor::Console.new(CloudDoor::OneDrive)
-    console.auth(options.d)
+    console.login(options.d)
   end
 end
 

@@ -46,26 +46,6 @@ module CloudDoor
       end
     end
 
-    def set_login_account(login_account)
-      @account.login_account = login_account
-    end
-
-    def set_login_password(login_password)
-      @account.login_password = login_password
-    end
-
-    def set_file_name(file_name)
-      @file_name = file_name
-    end
-
-    def set_up_file_name(up_file_name)
-      @up_file_name = up_file_name
-    end
-
-    def set_mkdir_name(mkdir_name)
-      @mkdir_name = mkdir_name
-    end
-
     def show_storage_name
       @storage_name
     end
@@ -138,7 +118,7 @@ module CloudDoor
       handle_exception(e)
     end
 
-    def show_current_dir
+    def show_current_directory
       @file_list.pull_current_dir
     end
 
@@ -255,16 +235,6 @@ module CloudDoor
     end
 
     private
-
-    def get_session_id
-      session_id = nil
-      if @config.session_use?
-        cgi        = CGI.new
-        session    = CGI::Session.new(cgi)
-        session_id = session['locate']
-      end
-      session_id
-    end
 
     def set_file_id
       if @file_name.nil? || @file_name.empty?

@@ -15,40 +15,16 @@ module CloudDoor
   class CloudDoor
     attr_accessor :storage
 
-    def initialize(storage_klass, id = nil)
-      @storage = storage_klass.new(id)
-    end
-
-    def set_login_account(login_account)
-      @storage.set_login_account(login_account)
-    end
-
-    def set_login_password(login_password)
-      @storage.set_login_password(login_password)
-    end
-
-    def set_file_name(file_name)
-      @storage.set_file_name(file_name)
-    end
-
-    def set_up_file_name(up_file_name)
-      @storage.set_up_file_name(up_file_name)
-    end
-
-    def set_mkdir_name(mkdir_name)
-      @storage.set_mkdir_name(mkdir_name)
+    def initialize(storage_klass, session_id = nil)
+      @storage = storage_klass.new(session_id)
     end
 
     def login(login_account, login_password)
       @storage.login(login_account, login_password)
     end
 
-    def load_token(token_file = nil)
+    def load_token
       @storage.load_token
-    end
-
-    def reset_token(url)
-      @storage.reset_token(url)
     end
 
     def refresh_token
@@ -95,8 +71,8 @@ module CloudDoor
       @storage.change_directory(file_name)
     end
 
-    def show_current_dir
-      @storage.show_current_dir
+    def show_current_directory
+      @storage.show_current_directory
     end
 
     def show_property(file_name)

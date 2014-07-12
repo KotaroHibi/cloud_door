@@ -32,15 +32,15 @@ command :account do |c|
   end
 end
 
-command :auth do |c|
-  c.syntax      = 'dropbox auth'
+command :login do |c|
+  c.syntax      = 'dropbox login'
   c.summary     = 'authentication for dropbox'
   c.description = 'authentication for dropbox'
-  c.example 'description', 'dropbox auth'
+  c.example 'description', 'dropbox login'
   c.option '-d'
   c.action do |args, options|
     console = CloudDoor::Console.new(CloudDoor::Dropbox)
-    console.auth(options.d)
+    console.login(options.d)
   end
 end
 
