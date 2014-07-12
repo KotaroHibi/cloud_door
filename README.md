@@ -84,9 +84,9 @@ require 'cloud_door'
 require 'pp'
 
 # make an instance for connecting to Onedrive
-storage = CloudDoor::CloudDoor(CloudDoor::OneDrive)
+storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
 # make an instance for connecting to Dropbox
-# storage = CloudDoor::CloudDoor(CloudDoor::Dropbox)
+# storage = CloudDoor::CloudDoor.new(CloudDoor::Dropbox)
 # login
 storage.login('account', 'password')
 # show files
@@ -102,7 +102,7 @@ B.after login
 ```ruby
 require 'cloud_door'
 
-storage = CloudDoor::CloudDoor(CloudDoor::OneDrive)
+storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
 # load_token calls the login information of previous
 storage.load_token
 ```
@@ -112,11 +112,11 @@ C.if session_flag is "1"(using session ID)
 require 'cloud_door'
 
 # login
-storage = CloudDoor::CloudDoor(CloudDoor::OneDrive)
+storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
 session_id = storage.login('account', 'password')
 
 # load_token
-storage = CloudDoor::CloudDoor(CloudDoor::OneDrive, session_id)
+storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive, session_id)
 storage.load_token
 
 ```
