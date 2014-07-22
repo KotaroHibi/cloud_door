@@ -1,8 +1,7 @@
 # CloudDoor
 
 This gem can access different cloud storage through same interface.  
-This gem supports OneDrive and Dropbox, now.  
-It will be supported also google drive in the future.
+This gem supports OneDrive, Dropbox and GoogleDrive.
 
 
 ## Installation
@@ -31,17 +30,18 @@ Please create application on below url.
 |-------|---|
 |OneDrive|https://account.live.com/developers/applications/index|
 |Dropbox|https://www.dropbox.com/developers/apps/create|
+|GoogleDrive|https://console.developers.google.com/flows/enableapi?apiid=drive|
 
 ### configuration
 1. make "cloud_door_config.yml" on application root directory.
 2. write application settings to "cloud_door_config.yml".
   - all
     - data_path  
-      data_path is path to save data file.  
+      data_path is path to save data file.
       application must have write permission to data_path.
     - session_flg  
-      Whether or not to switch the session for each user.  
-      "0" is "no" and "1" is "yes".  
+      Whether or not to switch the session for each user.
+      "0" is "no" and "1" is "yes".
       must be a "1" in an environment where multiple users use application at same time.
   - onedrive
     - client_id  
@@ -49,7 +49,7 @@ Please create application on below url.
     - client_secret  
       OneDrive's client secret
     - redirect_url  
-      OneDrive's redirect url after login.  
+      OneDrive's redirect url after login.
       please set to "https://login.live.com/oauth20_desktop.srf" for desktop apps.
   - dropbox
     - client_id  
@@ -57,69 +57,82 @@ Please create application on below url.
     - client_secret  
       Dropbox's client secret
     - redirect_url  
-      Dropbox's redirect url after login.  
+      Dropbox's redirect url after login.
       please set to "https://localhost" for desktop apps.
+  - googledrive
+    - client_id  
+      GoogleDrive's client id
+    - client_secret  
+      GoogleDrive's client secret
+    - redirect_url  
+      GoogleDrive's redirect url after login.
+      please set to "urn:ietf:wg:oauth:2.0:oob" for desktop apps.
 
-example
-```
-all:
-  data_path : './data/'
-  web_app_flag: 0
-onedrive:
-  client_id: onedrive
-  client_secret: onedrive_secret
-  redirect_url: https://login.live.com/oauth20_desktop.srf
-dropbox:
-  client_id: dropbox
-  client_secret: dropbox_secret
-  redirect_url: http://localhost
-```
+example  
+    ```
+    all:
+      data_path : './data/'
+      web_app_flag: 0
+    onedrive:
+      client_id: onedrive
+      client_secret: onedrive_secret
+      redirect_url: https://login.live.com/oauth20_desktop.srf
+    dropbox:
+      client_id: dropbox
+      client_secret: dropbox_secret
+      redirect_url: http://localhost
+    googledrive:
+      client_id: googledrive
+      client_secret: googledrive_secret
+      redirect_url: urn:ietf:wg:oauth:2.0:oob
+    ```
 
 
 ### example
 
-A.before login
-```ruby
-require 'cloud_door'
-require 'pp'
+A.before login  
+    ```ruby
+    require 'cloud_door'
+    require 'pp'
 
-# make an instance for connecting to Onedrive
-storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
-# make an instance for connecting to Dropbox
-# storage = CloudDoor::CloudDoor.new(CloudDoor::Dropbox)
-# login
-storage.login('account', 'password')
-# show files
-files = storage.show_files
-pp files
-# upload file
-storage.upload_file('README.md')
-# download file
-storage.download_file('README.md')
-```
+    # make an instance for connecting to Onedrive
+    storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
+    ## make an instance for connecting to Dropbox
+    ## storage = CloudDoor::CloudDoor.new(CloudDoor::Dropbox)
+    ## make an instance for connecting to GoogleDrive
+    ## storage = CloudDoor::CloudDoor.new(CloudDoor::GoogleDrive)
+    # login
+    storage.login('account', 'password')
+    # show files
+    files = storage.show_files
+    pp files
+    # upload file
+    storage.upload_file('README.md')
+    # download file
+    storage.download_file('README.md')
+    ```
 
-B.after login
-```ruby
-require 'cloud_door'
+B.after login--
+    ```ruby
+    require 'cloud_door'
+    
+    storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
+    # load_token calls the login information of previous
+    storage.load_token
+    ```
 
-storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
-# load_token calls the login information of previous
-storage.load_token
-```
-
-C.if session_flag is "1"(using session ID)
-```ruby
-require 'cloud_door'
-
-# login
-storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
-session_id = storage.login('account', 'password')
-
-# load_token
-storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive, session_id)
-storage.load_token
-
-```
+C.if session_flag is "1"(using session ID)--
+    ```ruby
+    require 'cloud_door'
+    
+    # login
+    storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
+    session_id = storage.login('account', 'password')
+    
+    # load_token
+    storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive, session_id)
+    storage.load_token
+    ```
 
 
 ### methods

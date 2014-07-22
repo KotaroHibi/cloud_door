@@ -28,11 +28,14 @@ module CloudDoor
       @root_id      = ROOT_ID
       @storage_name = STORAGE_NAME
       @session_id   = session_id
+      @client       = nil
     end
 
     def load_token
       token_file = File.basename(@token.token_file)
-      @token = Token.load_token(token_file, @config.data_path, @session_id)
+      @token     = Token.load_token(token_file, @config.data_path, @session_id)
+      @client    = OneDriveApi.new(@token.access_token)
+      @token
     end
 
     def refresh_token
@@ -92,41 +95,34 @@ module CloudDoor
     end
 
     def request_user
-      api = OneDriveApi.new(@token.access_token)
-      api.request_user
+      @client.request_user
     end
 
     def request_dir
       file_id = @parent_id || @file_id || ROOT_ID
-      api     = OneDriveApi.new(@token.access_token)
-      api.request_dir(file_id)
+      @client.request_dir(file_id)
     end
 
     def request_file
-      api = OneDriveApi.new(@token.access_token)
-      api.request_file(@file_id)
+      @client.request_file(@file_id)
     end
 
     def request_download
-      api     = OneDriveApi.new(@token.access_token)
-      contens = api.request_download(@file_id)
+      contens = @client.request_download(@file_id)
       open("#{@file_name}", 'wb') { |file| file << contens }
     end
 
     def request_upload(file_path)
-      api = OneDriveApi.new(@token.access_token)
-      api.request_upload(file_path, @parent_id)
+      @client.request_upload(file_path, @parent_id)
     end
 
     def request_delete
-      api = OneDriveApi.new(@token.access_token)
-      api.request_delete(@file_id)
+      @client.request_delete(@file_id)
     end
 
     def request_mkdir
       parent_id = @parent_id || ROOT_ID
-      api       = OneDriveApi.new(@token.access_token)
-      api.request_mkdir(@mkdir_name, parent_id)
+      @client.request_mkdir(@mkdir_name, parent_id)
     end
 
     def pull_files

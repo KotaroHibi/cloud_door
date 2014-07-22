@@ -30,11 +30,14 @@ module CloudDoor
       @root_id      = ROOT_ID
       @storage_name = STORAGE_NAME
       @session_id   = session_id
+      @client       = nil
     end
 
     def load_token
       token_file = File.basename(@token.token_file)
-      @token = Token.load_token(token_file, @config.data_path, @session_id)
+      @token     = Token.load_token(token_file, @config.data_path, @session_id)
+      @client    = DropboxClient.new(@token.access_token)
+      @token
     end
 
    def login(login_account, login_password)
@@ -45,6 +48,7 @@ module CloudDoor
       access_token, user_id = flow.finish(code)
       raise NoDataException if access_token.nil?
       @session_id = reset_token({'access_token' => access_token})
+      @client = DropboxClient.new(access_token)
       items = pull_files
       @file_list.delete_file
       @file_list.write_file_list(items)
@@ -60,57 +64,50 @@ module CloudDoor
     private
 
     def request_user
-      client = DropboxClient.new(@token.access_token)
-      info   = client.account_info()
+      info = @client.account_info()
       raise NoDataException if info.nil? || info.empty?
       info
     end
 
     def request_dir
       file_id = @parent_id || @file_id || ROOT_ID
-      client  = DropboxClient.new(@token.access_token)
-      client.metadata(file_id)
+      @client.metadata(file_id)
     end
 
     def request_file
-      client = DropboxClient.new(@token.access_token)
-      client.metadata(@file_id)
+      @client.metadata(@file_id)
     end
 
     def request_download
-      client = DropboxClient.new(@token.access_token)
-      contents, metadata = client.get_file_and_metadata(@file_id)
+      contents, metadata = @client.get_file_and_metadata(@file_id)
       open(@file_name, 'w') {|f| f.puts contents }
       metadata
     end
 
     def request_upload(file_path)
-      client = DropboxClient.new(@token.access_token)
       if @parent_id == ROOT_ID
         to_path = @parent_id + file_path
       else
         to_path = "#{@parent_id}/#{file_path}"
       end
-      response = client.put_file(to_path, open(file_path))
+      response = @client.put_file(to_path, open(file_path))
       raise UploadFailedException if response.nil? || response.empty?
       response
     end
 
     def request_delete
-      client = DropboxClient.new(@token.access_token)
-      response = client.file_delete(@file_id)
+      response = @client.file_delete(@file_id)
       raise DeleteFailedException if response.nil? || response.empty?
       response
     end
 
     def request_mkdir
-      client = DropboxClient.new(@token.access_token)
       if @parent_id == ROOT_ID
         path = @parent_id + @mkdir_name
       else
         path = "#{@parent_id}/#{@mkdir_name}"
       end
-      response = client.file_create_folder(path)
+      response = @client.file_create_folder(path)
       raise MkdirFailedException if response.nil? || response.empty?
       response
     end

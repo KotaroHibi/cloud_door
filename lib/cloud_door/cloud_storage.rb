@@ -211,9 +211,9 @@ module CloudDoor
       @file_name = file_name
       raise SetIDException unless set_file_id
       return false if file?(file_name)
-      info = show_property(file_name)
-      raise NoDataException if info.nil? || !info.is_a?(Hash) || !info.key?('count')
-      (info['count'] > 0)
+      items = pull_files
+      raise NoDataException if items.nil? || !items.is_a?(Hash)
+      (items.count > 0)
     rescue => e
       handle_exception(e)
     end
