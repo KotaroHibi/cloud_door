@@ -1,7 +1,7 @@
 module CloudDoor
   class Token
     attr_accessor :token_file, :token_type, :expires_in, :scope, :access_token,
-                  :refresh_token, :user_id, :token_name
+                  :refresh_token, :user_id, :token_name, :credentials
     attr_reader :data_path
 
     TOKEN_ITEMS = [
@@ -10,7 +10,8 @@ module CloudDoor
       'scope',
       'access_token',
       'refresh_token',
-      'user_id'
+      'user_id',
+      'credentials'
     ]
 
     def initialize(token_name, data_path, id = nil)

@@ -191,6 +191,11 @@ EOF
   describe 'ls' do
     subject { console.ls(file_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'have files' do
       let(:file_name) { nil }
       let(:posit) do
@@ -259,11 +264,19 @@ EOF
         expect($terminal.output.string).to include(expects)
       end
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'cd' do
     subject { console.cd(file_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'file_name not input' do
       let(:file_name) { nil }
       it do
@@ -330,11 +343,19 @@ EOF
         expect($terminal.output.string).to include(expects)
       end
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'info' do
     subject { console.info(file_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'file_name not input' do
       let(:file_name) { nil }
       it do
@@ -377,12 +398,20 @@ EOF
         expect($terminal.output.string).to include(expects)
       end
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'pwd' do
     subject { console.pwd }
     let(:console) { create_console }
     let(:posit) { '/top' }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     it do
       expect_any_instance_of(CloudDoor::OneDrive).to receive(:show_current_directory)
         .and_return(posit)
@@ -390,11 +419,19 @@ EOF
       expects = '/top'
       expect($terminal.output.string).to include(expects)
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'download' do
     subject { console.download(file_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'file_name not input' do
       let(:file_name) { nil }
       it do
@@ -447,11 +484,19 @@ EOF
         expect($terminal.output.string).to include(expects)
       end
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'upload' do
     subject { console.upload(file_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'file_name not input' do
       let(:file_name) { nil }
       it do
@@ -534,11 +579,19 @@ EOF
         expect($terminal.output.string).to include(expects)
       end
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'rm' do
     subject { console.rm(file_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'file_name not input' do
       let(:file_name) { nil }
       it do
@@ -591,11 +644,19 @@ EOF
         expect($terminal.output.string).to include(expects)
       end
     end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
+    end
   end
 
   describe 'mkdir' do
     subject { console.mkdir(mkdir_name) }
     let(:console) { create_console }
+    let(:token) { console.drive.storage.token }
+    let(:token_file) { console.drive.storage.token.token_file }
+    before(:each) do
+      open(token_file, 'wb') { |file| file << Marshal.dump(token) }
+    end
     context 'mkdir_name not input' do
       let(:mkdir_name) { nil }
       it do
@@ -628,6 +689,9 @@ EOF
         expects = "'/top/folder1' already exists in OneDrive."
         expect($terminal.output.string).to include(expects)
       end
+    end
+    after(:each) do
+      File.delete(token_file) if File.exist?(token_file)
     end
   end
 end

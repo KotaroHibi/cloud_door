@@ -1,0 +1,134 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'commander/import'
+# require 'cloud_door'
+require './lib/cloud_door'
+
+program :version, '0.0.1'
+program :description, 'access google drive from CLI'
+
+command :config do |c|
+  c.syntax      = 'gdrive config'
+  c.summary     = 'configure the google drive connection'
+  c.description = 'configure the google drive connection'
+  c.example 'description', 'gdrive config'
+  c.option '-l'
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.config(options.l)
+  end
+end
+
+command :account do |c|
+  c.syntax      = 'gdrive account'
+  c.summary     = 'set account for the google drive connection'
+  c.description = 'set account for the google drive connection'
+  c.example 'description', 'gdrive accout'
+  # c.option '-b STR', String, 'Example of string'
+  c.option '-l'
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.account(options.l)
+  end
+end
+
+command :login do |c|
+  c.syntax      = 'gdrive login'
+  c.summary     = 'authentication for google drive'
+  c.description = 'authentication for google drive'
+  c.example 'description', 'gdrive login'
+  c.option '-d'
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.login(options.d)
+  end
+end
+
+command :ls do |c|
+  c.syntax      = 'gdrive list [file_name]'
+  c.summary     = 'list google drive files'
+  c.description = 'list google drive files'
+  c.example 'description', "gdrive list 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.ls(args[0])
+  end
+end
+
+command :cd do |c|
+  c.syntax      = 'gdrive cd [file_name]'
+  c.summary     = 'change directory on google drive'
+  c.description = 'change directory on google drive'
+  c.example 'description', "gdrive cd 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.cd(args[0])
+  end
+end
+
+command :info do |c|
+  c.syntax      = 'gdrive info [file_name]'
+  c.summary     = 'show google drive file information'
+  c.description = 'show google drive file information'
+  c.example 'description', "gdrive info 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.info(args[0])
+  end
+end
+
+command :pwd do |c|
+  c.syntax      = 'gdrive pwd'
+  c.summary     = 'show current directory'
+  c.description = 'show current directory'
+  c.example 'description', "gdrive pwd"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.pwd
+  end
+end
+
+command :download do |c|
+  c.syntax      = 'gdrive download [file_name]'
+  c.summary     = 'download file from google drive'
+  c.description = 'download file from google drive'
+  c.example 'description', "gdrive download 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.download(args[0])
+  end
+end
+
+command :upload do |c|
+  c.syntax      = 'gdrive upload [file_name]'
+  c.summary     = 'upload file to google drive'
+  c.description = 'upload file to google drive'
+  c.example 'description', "gdrive upload 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.upload(args[0])
+  end
+end
+
+command :rm do |c|
+  c.syntax      = 'gdrive delete [file_name]'
+  c.summary     = 'delete file on google drive'
+  c.description = 'delete file on google drive'
+  c.example 'description', "gdrive delete 'file'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.rm(args[0])
+  end
+end
+
+command :mkdir do |c|
+  c.syntax      = 'gdrive mkdir [folder_name]'
+  c.summary     = 'make directory on google drive'
+  c.description = 'make directory on google drive'
+  c.example 'description', "gdrive mkdir 'folder'"
+  c.action do |args, options|
+    console = CloudDoor::Console.new(CloudDoor::GoogleDrive)
+    console.mkdir(args[0])
+  end
+end

@@ -1,6 +1,12 @@
 require 'spec_helper'
 
 describe 'Dropbox' do
+  let(:storage) do
+    storage = create_storage(CloudDoor::Dropbox)
+    storage.load_token
+    storage
+  end
+
   describe 'reset_token' do
     subject { storage.reset_token(token_value) }
     let(:storage) { create_storage(CloudDoor::Dropbox) }
@@ -23,7 +29,6 @@ describe 'Dropbox' do
 
   describe 'show_user' do
     subject { storage.show_user }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     context 'success' do
       let(:posit) { {'name' => 'dropbox'} }
       it do
@@ -36,7 +41,6 @@ describe 'Dropbox' do
 
   describe 'show_files' do
     subject { storage.show_files(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     context 'success' do
       let(:file_name) { nil }
@@ -90,7 +94,6 @@ describe 'Dropbox' do
 
   describe 'change_directory' do
     subject { storage.change_directory(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     context 'success' do
       let(:file_name) { 'folder1' }
@@ -153,13 +156,11 @@ describe 'Dropbox' do
 
   describe 'show_current_directory' do
     subject { storage.show_current_directory }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     it { is_expected.to eq('/top') }
   end
 
   describe 'show_property' do
     subject { storage.show_property(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     before(:each) do
       list = [{'items' => {'file1' => {'id' => '/file1', 'type' => 'file'}}}]
@@ -290,7 +291,6 @@ describe 'Dropbox' do
 
   describe 'download_file' do
     subject { storage.download_file(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     context 'success' do
       let(:file_name) { 'file1' }
@@ -334,7 +334,6 @@ describe 'Dropbox' do
 
   describe 'upload_file' do
     subject { storage.upload_file(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     let(:up_file) { 'upload' }
     context 'success' do
@@ -373,7 +372,6 @@ describe 'Dropbox' do
 
   describe 'delete_file' do
     subject { storage.delete_file(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     context 'success' do
       let(:file_name) { 'file1' }
@@ -412,7 +410,6 @@ describe 'Dropbox' do
 
   describe 'make_directory' do
     subject { storage.make_directory(mkdir_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     context 'success' do
       let(:mkdir_name) { 'folder1' }
@@ -443,7 +440,6 @@ describe 'Dropbox' do
 
   describe 'assign_upload_file_name' do
     subject { storage.assign_upload_file_name(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     context 'file' do
       let(:file_name) { 'testfile' }
       it { is_expected.to eq file_name }
@@ -462,7 +458,6 @@ describe 'Dropbox' do
 
   describe 'file_exist?' do
     subject { storage.file_exist?(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     before(:each) do
       list = [{'items' => {'file1' => {'id' => '/file1', 'type' => 'file'}}}]
@@ -502,7 +497,6 @@ describe 'Dropbox' do
 
   describe 'has_file?' do
     subject { storage.has_file?(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     before(:each) do
       file1   = {'id' => '/file1', 'type' => 'file'}
@@ -515,7 +509,12 @@ describe 'Dropbox' do
     context 'return true' do
       context 'count > 0' do
         let(:file_name) { 'folder1' }
-        let(:posit) { {'path' => '/foler1', 'count' => 5} }
+        let(:posit) do
+          {'contents' => [
+            {'path' => '/file1', 'name' => 'file1', 'is_dir' => false},
+            {'path' => '/folder1', 'name' => 'folder1', 'is_dir' => true},
+          ]}
+        end
         before(:each) do
           storage.stub(:file_exist?)
             .with(file_name)
@@ -536,7 +535,7 @@ describe 'Dropbox' do
       end
       context 'count == 0' do
         let(:file_name) { 'folder1' }
-        let(:posit) { {'path' => '/foler1', 'count' => 0} }
+        let(:posit) { {'contents' => []} }
         before(:each) do
           storage.stub(:file_exist?)
             .with(file_name)
@@ -574,7 +573,6 @@ describe 'Dropbox' do
 
   describe 'file?' do
     subject { storage.file?(file_name) }
-    let(:storage) { create_storage(CloudDoor::Dropbox) }
     let(:list_file) { storage.file_list.list_file }
     let(:access_token) { storage.token.access_token }
     before(:each) do
