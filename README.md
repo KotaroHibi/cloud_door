@@ -69,7 +69,7 @@ Please create application on below url.
       please set to "urn:ietf:wg:oauth:2.0:oob" for desktop apps.
 
 example  
-    ```
+
     all:
       data_path : './data/'
       web_app_flag: 0
@@ -85,13 +85,12 @@ example
       client_id: googledrive
       client_secret: googledrive_secret
       redirect_url: urn:ietf:wg:oauth:2.0:oob
-    ```
 
 
 ### example
 
 A.before login  
-    ```ruby
+
     require 'cloud_door'
     require 'pp'
 
@@ -110,19 +109,17 @@ A.before login
     storage.upload_file('README.md')
     # download file
     storage.download_file('README.md')
-    ```
 
-B.after login--
-    ```ruby
+B.after login  
+
     require 'cloud_door'
     
     storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive)
     # load_token calls the login information of previous
     storage.load_token
-    ```
 
-C.if session_flag is "1"(using session ID)--
-    ```ruby
+C.if session_flag is "1"(using session ID)  
+
     require 'cloud_door'
     
     # login
@@ -132,7 +129,6 @@ C.if session_flag is "1"(using session ID)--
     # load_token
     storage = CloudDoor::CloudDoor.new(CloudDoor::OneDrive, session_id)
     storage.load_token
-    ```
 
 
 ### methods
