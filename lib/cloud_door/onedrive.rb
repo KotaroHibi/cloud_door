@@ -48,13 +48,14 @@ module CloudDoor
       handle_exception(e)
     end
 
-   def login(login_account, login_password)
+    def login(login_account, login_password)
       @account.login_account  = login_account
       @account.login_password = login_password
       url  = login_browser
       info = request_get_token(url)
       raise NoDataException if info.nil?
       @session_id = reset_token(info)
+      @client = OneDriveApi.new(@token.access_token)
       items = pull_files
       @file_list.delete_file
       @file_list.write_file_list(items)

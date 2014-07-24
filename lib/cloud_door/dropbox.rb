@@ -40,7 +40,7 @@ module CloudDoor
       @token
     end
 
-   def login(login_account, login_password)
+    def login(login_account, login_password)
       @account.login_account  = login_account
       @account.login_password = login_password
       flow = DropboxOAuth2FlowNoRedirect.new(@config.client_id, @config.client_secret)
