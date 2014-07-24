@@ -29,7 +29,7 @@ It will be supported also google drive in the future.}
   spec.add_runtime_dependency 'watir-webdriver', '~> 0.6', '>= 0.6.9'
   spec.add_runtime_dependency 'dropbox-sdk', '~> 1.6', '>= 1.6.4'
   spec.add_runtime_dependency 'google-api-client', '~> 0.7', '>= 0.7.1'
-  spec.add_runtime_dependency 'mimetype-fu'
+  spec.add_runtime_dependency 'mimetype-fu', '~> 0.1', '>= 0.1.2'
   # test libraries
   spec.add_development_dependency 'rspec', '~> 2.99', '>= 2.99.0'
   spec.add_development_dependency 'webmock', '~> 1.18', '>= 1.18.0'
