@@ -10,7 +10,7 @@ dropbox:
   client_id: 
   client_secret: 
   redirect_url: 
-gdrive:
+googledrive:
   client_id: 
   client_secret: 
   redirect_url: 
