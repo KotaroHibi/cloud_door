@@ -10,8 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['hibiheion@gmail.com']
   spec.summary       = %q{This gem can access different cloud storage through same interface.}
   spec.description   = %q{This gem can access different cloud storage through same interface.
-This gem supports OneDrive and Dropbox, now.
-It will be supported also google drive in the future.}
+This gem supports Dropbox, GoogleDrive and OneDrive.}
   spec.homepage      = 'https://github.com/KotaroHibi/cloud_door'
   spec.license       = 'MIT'
 
